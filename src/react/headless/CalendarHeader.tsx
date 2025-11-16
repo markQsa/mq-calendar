@@ -26,7 +26,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   onNavigateBackward,
   onNavigateForward
 }) => {
-  const [hoveredCell, setHoveredCell] = useState<{ rowIndex: number; cellIndex: number; part: 'month' | 'year' } | null>(null);
+  const [hoveredCell, setHoveredCell] = useState<{ rowIndex: number; cellIndex: number; part: import('../../core/types').TimeUnit } | null>(null);
 
   // Calculate header row height from CSS variable or default
   const rowHeight = 40; // Default, will be overridden by CSS variable

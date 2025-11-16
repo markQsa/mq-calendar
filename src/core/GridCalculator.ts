@@ -192,18 +192,6 @@ export class GridCalculator {
     return text.length * avgCharWidth + 16; // Add padding (8px on each side)
   }
 
-  /**
-   * Check if all cells in a row have enough width for their text
-   */
-  private rowTextFits(cells: HeaderCell[]): boolean {
-    for (const cell of cells) {
-      const textWidth = this.estimateTextWidth(cell.label, cell.isPrimary);
-      if (textWidth > cell.width) {
-        return false; // This cell's text doesn't fit
-      }
-    }
-    return true; // All cells fit
-  }
 
   /**
    * Check if year can fit in month cells for combining
