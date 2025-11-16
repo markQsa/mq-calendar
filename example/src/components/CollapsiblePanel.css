@@ -1,0 +1,42 @@
+.collapsible-panel-header {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f9fafb;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid #e0e0e0;
+  transition: background 0.2s;
+  z-index: 100;
+}
+
+.collapsible-panel-header:hover {
+  background: #f3f4f6;
+}
+
+.collapsible-panel-icon {
+  margin-right: 8px;
+  font-size: 10px;
+  color: #666;
+  transition: transform 0.2s;
+  width: 12px;
+}
+
+.collapsible-panel-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+}
+
+.collapsible-panel-content {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: rgba(248, 249, 250, 0.8);
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 1;
+  pointer-events: none;
+}

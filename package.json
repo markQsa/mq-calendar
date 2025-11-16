@@ -1,0 +1,85 @@
+{
+  "name": "@mq/timeline-calendar",
+  "version": "0.1.0",
+  "description": "A flexible, framework-agnostic timeline/calendar component with smooth scrolling and zooming",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/core/index.mjs",
+      "require": "./dist/core/index.js",
+      "types": "./dist/core/index.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react/index.mjs",
+      "require": "./dist/react/index.js",
+      "types": "./dist/react/index.d.ts"
+    },
+    "./react/styled": {
+      "import": "./dist/react/styled/index.mjs",
+      "require": "./dist/react/styled/index.js",
+      "types": "./dist/react/styled/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "npm run dev --prefix example",
+    "dev:watch": "vite build --watch",
+    "build": "tsc && vite build",
+    "test": "vitest",
+    "lint": "eslint . --ext ts,tsx",
+    "typecheck": "tsc --noEmit",
+    "example": "npm run dev --prefix example"
+  },
+  "keywords": [
+    "timeline",
+    "calendar",
+    "gantt",
+    "scheduler",
+    "react",
+    "typescript",
+    "headless"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "date-fns": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8",
+    "vite-plugin-dts": "^3.7.0",
+    "vitest": "^1.0.4"
+  }
+}
