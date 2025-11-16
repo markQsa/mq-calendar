@@ -51,7 +51,7 @@ function App() {
               background: '#ffffff',
               gridLine: '#e5e7eb',
               gridLinePrimary: '#9ca3af',
-              headerBackground: '#f9fafb',
+              headerBackground: '#ffffff',
               headerText: '#374151',
               headerBorder: '#d1d5db',
               currentTimeLine: '#ef4444',  // Bright red for current time line

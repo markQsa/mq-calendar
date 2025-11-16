@@ -286,7 +286,8 @@ export class GridCalculator {
     // Longest case: e.g., "Vko52 Maalis 2025" for Finnish
     const combinedLabel = `${weekAbbr}52 ${longestMonthLabel} 2025`;
     const combinedWidth = this.estimateTextWidth(combinedLabel, false);
-    return combinedWidth <= weekWidth;
+    // Allow 80% threshold - combined captions use distributed layout
+    return combinedWidth <= weekWidth * 1.25;
   }
 
   /**
