@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TimelineCalendar, TimelineItem } from '../../src/react';
+import { TimelineCalendar, TimelineItem, fiFI } from '../../src/react';
 import { CollapsiblePanel } from './components/CollapsiblePanel';
 import { PanelGroup } from './components/PanelGroup';
 
@@ -28,13 +28,15 @@ function App() {
 
       <div className="timeline-wrapper">
         <TimelineCalendar
-          startDate={new Date('2025-01-01')}
-          endDate={new Date('2025-12-31')}
+          startDate={new Date('2024-01-01')}
+          endDate={new Date('2026-12-31')}
           width="100%"
           height="600px"
           minZoom="1000 years"   // Maximum time span to display
           maxZoom="100 milliseconds"   // Minimum time span to display
-          showNavigation={true}
+          showNavigation={false}
+          showCurrentTime={true}  // Show current time line with auto-refresh
+          locale={fiFI}  // Use Finnish locale
           onViewportChange={(start, end) => {
             setViewport({
               start: start.toLocaleDateString(),
@@ -52,6 +54,7 @@ function App() {
               headerBackground: '#f9fafb',
               headerText: '#374151',
               headerBorder: '#d1d5db',
+              currentTimeLine: '#ef4444',  // Bright red for current time line
               timeTypes: {
                 century: { text: '#1f2937', line: '#1f2937' },
                 decade: { text: '#374151', line: '#374151' },

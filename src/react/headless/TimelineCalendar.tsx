@@ -3,8 +3,10 @@ import type { TimelineCalendarProps } from '../types';
 import { useTimelineEngine } from '../hooks/useTimelineEngine';
 import { useResize } from '../hooks/useResize';
 import { useWheel } from '../hooks/useWheel';
+import { useCurrentTime } from '../hooks/useCurrentTime';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarContent } from './CalendarContent';
+import { CurrentTimeLine } from './CurrentTimeLine';
 import { TimelineContext } from './TimelineContext';
 import { defaultTimeConverter } from '../../utils/timeConverter';
 import { timeSpanToZoom, getEndOfPeriod } from '../../utils/dateUtils';
@@ -21,7 +23,9 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   minZoom,
   maxZoom,
   showNavigation = false,
+  showCurrentTime = false,
   timeConverter = defaultTimeConverter,
+  locale,
   theme = {},
   classNames = {},
   styles = {},
@@ -63,7 +67,17 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     endDate: endDateObj,
     containerWidth: containerWidth || 1000, // Default width until measured
     minZoom: minZoomValue,
-    maxZoom: maxZoomValue
+    maxZoom: maxZoomValue,
+    locale
+  });
+
+  // Get current zoom state for current time line
+  const currentPixelsPerMs = engine?.getZoomState().pixelsPerMs || 0;
+
+  // Use current time with auto-refresh
+  const { currentTime } = useCurrentTime({
+    pixelsPerMs: currentPixelsPerMs,
+    enabled: showCurrentTime
   });
 
   // Handle container resize
@@ -121,6 +135,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
       '--timeline-header-bg': theme.colors?.headerBackground || '#f5f5f5',
       '--timeline-header-text': theme.colors?.headerText || '#333333',
       '--timeline-header-border': theme.colors?.headerBorder || '#d0d0d0',
+      '--timeline-current-time-line': theme.colors?.currentTimeLine || '#ff4444',
       '--timeline-header-font': theme.fonts?.header || 'system-ui, sans-serif',
       '--timeline-content-font': theme.fonts?.content || 'system-ui, sans-serif',
       '--timeline-header-height': `${theme.spacing?.headerHeight || 80}px`,
@@ -251,6 +266,16 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
         >
           {children}
         </CalendarContent>
+
+        {/* Current time line - spans entire calendar height */}
+        {showCurrentTime && engine && (
+          <CurrentTimeLine
+            currentTime={currentTime}
+            viewportStart={engine.getViewportState().start}
+            pixelsPerMs={currentPixelsPerMs}
+            styles={styles}
+          />
+        )}
       </div>
     </TimelineContext.Provider>
   );

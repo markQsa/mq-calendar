@@ -6,6 +6,8 @@ export interface GridCalculatorConfig {
   minSpacing: number;
   /** Maximum spacing before adding more detailed grid lines */
   maxSpacing: number;
+  /** Locale for formatting dates */
+  locale?: import('../utils/locales').CalendarLocale;
 }
 
 /**
@@ -14,8 +16,12 @@ export interface GridCalculatorConfig {
 export class GridCalculator {
   private config: GridCalculatorConfig;
 
-  constructor(config: GridCalculatorConfig = { minSpacing: 60, maxSpacing: 200 }) {
-    this.config = config;
+  constructor(config?: GridCalculatorConfig) {
+    this.config = {
+      minSpacing: config?.minSpacing ?? 60,
+      maxSpacing: config?.maxSpacing ?? 200,
+      locale: config?.locale
+    };
   }
 
   /**
@@ -170,7 +176,7 @@ export class GridCalculator {
         timestamp,
         position,
         type: unit,
-        label: formatTimeUnit(current, unit),
+        label: formatTimeUnit(current, unit, this.config.locale),
         isPrimary,
         level
       });
@@ -201,9 +207,9 @@ export class GridCalculator {
     // Calculate the pixel width of one month at this zoom level
     const monthWidth = TIME_UNIT_MS.month * pixelsPerMs;
 
-    // Check with the longest possible month name + year
-    // Longest month names: "September" (9 chars)
-    const longestMonthLabel = "Sep"; // Using short form
+    // Find the longest month name in current locale
+    const monthNames = this.config.locale?.monthsShort || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const longestMonthLabel = monthNames.reduce((a, b) => a.length > b.length ? a : b);
     const yearLabel = "2025"; // 4 digits
     const combinedLabel = `${longestMonthLabel} ${yearLabel}`;
 
@@ -258,8 +264,12 @@ export class GridCalculator {
    */
   private canCombineMonthWithWeek(pixelsPerMs: number): boolean {
     const weekWidth = TIME_UNIT_MS.week * pixelsPerMs;
-    // Longest case: "W52 Sep"
-    const combinedLabel = "W52 Sep";
+    // Find the longest month name in current locale
+    const monthNames = this.config.locale?.monthsShort || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const longestMonthLabel = monthNames.reduce((a, b) => a.length > b.length ? a : b);
+    const weekAbbr = this.config.locale?.weekAbbr || 'W';
+    // Longest case: e.g., "Vko52 Maalis" for Finnish
+    const combinedLabel = `${weekAbbr}52 ${longestMonthLabel}`;
     const combinedWidth = this.estimateTextWidth(combinedLabel, false);
     return combinedWidth <= weekWidth;
   }
@@ -269,8 +279,12 @@ export class GridCalculator {
    */
   private canCombineYearMonthWithWeek(pixelsPerMs: number): boolean {
     const weekWidth = TIME_UNIT_MS.week * pixelsPerMs;
-    // Longest case: "W52 Sep 2025"
-    const combinedLabel = "W52 Sep 2025";
+    // Find the longest month name in current locale
+    const monthNames = this.config.locale?.monthsShort || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const longestMonthLabel = monthNames.reduce((a, b) => a.length > b.length ? a : b);
+    const weekAbbr = this.config.locale?.weekAbbr || 'W';
+    // Longest case: e.g., "Vko52 Maalis 2025" for Finnish
+    const combinedLabel = `${weekAbbr}52 ${longestMonthLabel} 2025`;
     const combinedWidth = this.estimateTextWidth(combinedLabel, false);
     return combinedWidth <= weekWidth;
   }
@@ -281,7 +295,7 @@ export class GridCalculator {
   private combineMonthWithWeek(weekCells: HeaderCell[]): HeaderCell[] {
     return weekCells.map(cell => {
       const weekDate = new Date(cell.timestamp);
-      const monthLabel = formatTimeUnit(weekDate, 'month');
+      const monthLabel = formatTimeUnit(weekDate, 'month', this.config.locale);
       const monthStart = getStartOf(weekDate, 'month');
 
       // If partially visible, only show the week part (actual time type)
@@ -320,7 +334,7 @@ export class GridCalculator {
   private combineYearMonthWithWeek(weekCells: HeaderCell[]): HeaderCell[] {
     return weekCells.map(cell => {
       const weekDate = new Date(cell.timestamp);
-      const monthLabel = formatTimeUnit(weekDate, 'month');
+      const monthLabel = formatTimeUnit(weekDate, 'month', this.config.locale);
       const yearLabel = weekDate.getFullYear().toString();
       const monthStart = getStartOf(weekDate, 'month');
       const yearStart = new Date(weekDate.getFullYear(), 0, 1);
@@ -581,7 +595,7 @@ export class GridCalculator {
       const width = (cellEnd - cellStart) * pixelsPerMs;
 
       if (width > 0) {
-        const label = formatTimeUnit(current, unit);
+        const label = formatTimeUnit(current, unit, this.config.locale);
 
         // Check if cell is partially visible at viewport edges
         const isPartiallyVisible = timestamp < startTime || nextTimestamp > endTime;

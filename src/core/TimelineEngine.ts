@@ -67,7 +67,13 @@ export class TimelineEngine {
 
     this.zoomController = new ZoomController(zoomConfig);
     this.scrollController = new ScrollController();
-    this.gridCalculator = new GridCalculator();
+
+    const gridConfig: GridCalculatorConfig = {
+      minSpacing: 60,
+      maxSpacing: 200,
+      locale: config.locale
+    };
+    this.gridCalculator = new GridCalculator(gridConfig);
     this.timeConverter = new TimeConverter(this.zoomState, this.viewportState);
   }
 

@@ -125,7 +125,6 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             style={{
               position: 'relative',
               height: 'var(--timeline-header-row-height)',
-              borderBottom: rowIndex < headerCells.length - 1 ? '1px solid var(--timeline-header-border)' : 'none',
               ...styles.headerRow
             }}
             data-timeline-header-row

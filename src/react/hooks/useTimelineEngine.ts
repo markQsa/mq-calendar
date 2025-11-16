@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { TimelineEngine } from '../../core/TimelineEngine';
 import type { TimelineConfig, GridLine, HeaderCell } from '../../core/types';
+import type { CalendarLocale } from '../../utils/locales';
 
 export interface UseTimelineEngineOptions {
   startDate: Date;
@@ -8,6 +9,7 @@ export interface UseTimelineEngineOptions {
   containerWidth: number;
   minZoom?: number;
   maxZoom?: number;
+  locale?: CalendarLocale;
 }
 
 export interface UseTimelineEngineReturn {
@@ -35,7 +37,8 @@ export function useTimelineEngine(options: UseTimelineEngineOptions): UseTimelin
       viewportEnd: options.endDate,
       containerWidth: options.containerWidth,
       minZoom: options.minZoom,
-      maxZoom: options.maxZoom
+      maxZoom: options.maxZoom,
+      locale: options.locale
     };
 
     const newEngine = new TimelineEngine(config);
@@ -45,7 +48,7 @@ export function useTimelineEngine(options: UseTimelineEngineOptions): UseTimelin
     // Initial calculation
     setGridLines(newEngine.getVisibleGridLines());
     setHeaderCells(newEngine.getHeaderCells());
-  }, [options.startDate, options.endDate, options.containerWidth, options.minZoom, options.maxZoom]);
+  }, [options.startDate, options.endDate, options.containerWidth, options.minZoom, options.maxZoom, options.locale]);
 
   // Refresh grid lines and header cells
   const refresh = useCallback(() => {

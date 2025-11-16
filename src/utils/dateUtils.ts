@@ -174,9 +174,51 @@ export function getEndOfPeriod(startTimestamp: number, unit: 'century' | 'decade
 }
 
 /**
- * Format a date according to time unit
+ * Format a date according to time unit with locale support
  */
-export function formatTimeUnit(date: Date, unit: string): string {
+export function formatTimeUnit(date: Date, unit: string, locale?: import('./locales').CalendarLocale): string {
+  // Use custom formatters if provided
+  if (locale?.formatters) {
+    switch (unit) {
+      case 'century':
+        if (locale.formatters.century) {
+          const year = date.getFullYear();
+          const centuryStart = Math.floor(year / 100) * 100;
+          const centuryEnd = centuryStart + 99;
+          return locale.formatters.century(centuryStart, centuryEnd);
+        }
+        break;
+      case 'decade':
+        if (locale.formatters.decade) {
+          const year = date.getFullYear();
+          const decadeStart = Math.floor(year / 10) * 10;
+          return locale.formatters.decade(decadeStart);
+        }
+        break;
+      case 'year':
+        if (locale.formatters.year) {
+          return locale.formatters.year(date.getFullYear());
+        }
+        break;
+      case 'month':
+        if (locale.formatters.month) {
+          return locale.formatters.month(date.getMonth());
+        }
+        break;
+      case 'week':
+        if (locale.formatters.week) {
+          return locale.formatters.week(getWeekNumber(date));
+        }
+        break;
+      case 'day':
+        if (locale.formatters.day) {
+          return locale.formatters.day(date.getDay(), date.getDate());
+        }
+        break;
+    }
+  }
+
+  // Default formatting
   switch (unit) {
     case 'century': {
       const year = date.getFullYear();
@@ -192,14 +234,16 @@ export function formatTimeUnit(date: Date, unit: string): string {
     case 'year':
       return date.getFullYear().toString();
     case 'month':
-      return date.toLocaleDateString('en-US', { month: 'short' });
+      return locale?.monthsShort[date.getMonth()] || date.toLocaleDateString('en-US', { month: 'short' });
     case 'week':
-      return `W${getWeekNumber(date)}`;
-    case 'day':
-      return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+      return `${locale?.weekAbbr || 'W'}${getWeekNumber(date)}`;
+    case 'day': {
+      const weekday = locale?.weekdaysShort[date.getDay()] || date.toLocaleDateString('en-US', { weekday: 'short' });
+      return `${weekday} ${date.getDate()}`;
+    }
     case 'halfday': {
       const hour = date.getHours();
-      return hour < 12 ? 'AM' : 'PM';
+      return hour < 12 ? (locale?.am || 'AM') : (locale?.pm || 'PM');
     }
     case 'quarterday':
       return date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: false }) + ':00';

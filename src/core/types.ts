@@ -17,6 +17,8 @@ export interface TimelineConfig {
   minZoom?: number;
   /** Maximum zoom level (pixels per millisecond) */
   maxZoom?: number;
+  /** Locale for date/time formatting */
+  locale?: import('../utils/locales').CalendarLocale;
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { ReactNode, CSSProperties } from 'react';
 import type { TimeUnit } from '../core/types';
 import type { TimeValue, DurationValue, TimeConverter } from '../utils/timeTypes';
+import type { CalendarLocale } from '../utils/locales';
 
 /**
  * Theme configuration for timeline styling
@@ -13,6 +14,7 @@ export interface TimelineTheme {
     headerBackground?: string;
     headerText?: string;
     headerBorder?: string;
+    currentTimeLine?: string;
     // Time type specific colors
     timeTypes?: {
       century?: { text?: string; line?: string };
@@ -114,8 +116,12 @@ export interface TimelineCalendarProps {
   maxZoom?: number | string;
   /** Show navigation buttons in header (default: false) */
   showNavigation?: boolean;
+  /** Show current time line (default: false) */
+  showCurrentTime?: boolean;
   /** Custom time converter (for Day.js, Luxon, etc.) */
   timeConverter?: TimeConverter;
+  /** Locale for date/time formatting */
+  locale?: CalendarLocale;
   /** Theme configuration */
   theme?: TimelineTheme;
   /** Custom class names */
