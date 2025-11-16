@@ -105,6 +105,7 @@ export function useTouch(
 
         if (touchState.isScrolling) {
           e.preventDefault(); // Prevent page scroll
+
           if (onScroll && Math.abs(deltaX) > 0) {
             onScroll(deltaX);
           }

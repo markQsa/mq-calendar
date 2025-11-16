@@ -3,7 +3,6 @@ import type { TimelineCalendarProps } from '../types';
 import { useTimelineEngine } from '../hooks/useTimelineEngine';
 import { useResize } from '../hooks/useResize';
 import { useWheel } from '../hooks/useWheel';
-import { useTouch } from '../hooks/useTouch';
 import { useCurrentTime } from '../hooks/useCurrentTime';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarContent } from './CalendarContent';
@@ -127,40 +126,6 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     }
   });
 
-  // Handle touch events (scroll and pinch-to-zoom)
-  useTouch(rootRef, {
-    onScroll: (deltaX) => {
-      if (!engine) return;
-
-      engine.scroll(deltaX);
-      refresh();
-
-      // Notify viewport change
-      if (onViewportChange) {
-        const viewport = engine.getViewportState();
-        onViewportChange(new Date(viewport.start), new Date(viewport.end));
-      }
-    },
-    onZoom: (delta, centerX) => {
-      if (!engine) return;
-
-      // Apply zoom centered at touch center
-      engine.zoom(delta, centerX);
-      refresh();
-
-      // Notify zoom change
-      if (onZoomChange) {
-        const zoomState = engine.getZoomState();
-        onZoomChange(zoomState.pixelsPerMs);
-      }
-
-      // Notify viewport change
-      if (onViewportChange) {
-        const viewport = engine.getViewportState();
-        onViewportChange(new Date(viewport.start), new Date(viewport.end));
-      }
-    }
-  });
 
   // Build CSS variables from theme
   const cssVars = useMemo((): CSSProperties => {
