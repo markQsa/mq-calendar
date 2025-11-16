@@ -1,4 +1,4 @@
-# @mq/timeline-calendar
+# mq-timeline-calendar
 
 A flexible, framework-agnostic timeline/calendar component with smooth scrolling and zooming capabilities.
 
@@ -15,13 +15,13 @@ A flexible, framework-agnostic timeline/calendar component with smooth scrolling
 ## Installation
 
 ```bash
-npm install @mq/timeline-calendar
+npm install mq-timeline-calendar
 ```
 
 ## Quick Start
 
 ```tsx
-import { TimelineCalendar, TimelineItem } from '@mq/timeline-calendar/react';
+import { TimelineCalendar, TimelineItem } from 'mq-timeline-calendar/react';
 
 function App() {
   return (
