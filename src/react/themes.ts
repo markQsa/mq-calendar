@@ -38,7 +38,7 @@ export const lightTheme: TimelineTheme = {
   spacing: {
     headerHeight: 80,
     headerRowHeight: 40,
-    rowHeight: 70,
+    rowHeight: 60,
   }
 };
 
@@ -80,7 +80,7 @@ export const darkTheme: TimelineTheme = {
   spacing: {
     headerHeight: 80,
     headerRowHeight: 40,
-    rowHeight: 70,
+    rowHeight: 60,
   }
 };
 

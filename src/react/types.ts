@@ -159,3 +159,86 @@ export interface TimelineItemProps {
   /** Children to render */
   children?: ReactNode;
 }
+
+/**
+ * Props for Row component
+ */
+export interface RowProps {
+  /** Starting row index (default: 0) */
+  startRow?: number;
+  /** Number of rows this component occupies (default: 1) */
+  rowCount?: number;
+  /** Custom class name */
+  className?: string;
+  /** Custom inline style */
+  style?: CSSProperties;
+  /** Children (typically TimelineItem components) */
+  children?: ReactNode;
+}
+
+/**
+ * Parameters for custom header renderer in CollapsibleRow
+ */
+export interface CollapsibleRowHeaderRenderParams {
+  isExpanded: boolean;
+  label: string;
+  toggle: () => void;
+}
+
+/**
+ * Props for CollapsibleRow component
+ */
+export interface CollapsibleRowProps {
+  /** Unique identifier for this row */
+  id: string;
+  /** Label text for the header */
+  label: string;
+  /** Number of rows this component occupies when expanded (default: 1) */
+  rowCount?: number;
+  /** Whether row is expanded by default (default: true) */
+  defaultExpanded?: boolean;
+  /** Custom class name for content area */
+  className?: string;
+  /** Custom inline style for content area */
+  style?: CSSProperties;
+  /** Custom class name for header */
+  headerClassName?: string;
+  /** Custom inline style for header */
+  headerStyle?: CSSProperties;
+  /** Custom header renderer */
+  renderHeader?: (params: CollapsibleRowHeaderRenderParams) => ReactNode;
+  /** Children (typically TimelineItem components) */
+  children?: ReactNode;
+}
+
+/**
+ * Props for TimelineRow component (unified Row and CollapsibleRow)
+ */
+export interface TimelineRowProps {
+  /** Unique identifier for this row (auto-generated if not provided) */
+  id?: string;
+  /** Label text for the header (required if collapsible=true and showHeader=true) */
+  label?: string;
+  /** Number of rows this component occupies when expanded (default: 1) */
+  rowCount?: number;
+  /** Starting row index - only used if not within TimelineRowGroup (default: 0) */
+  startRow?: number;
+  /** Whether this row can be collapsed (default: false) */
+  collapsible?: boolean;
+  /** Whether to show the header (default: true, only applies if collapsible=true) */
+  showHeader?: boolean;
+  /** Whether row is expanded by default (default: true) */
+  defaultExpanded?: boolean;
+  /** Custom class name for content area */
+  className?: string;
+  /** Custom inline style for content area */
+  style?: CSSProperties;
+  /** Custom class name for header */
+  headerClassName?: string;
+  /** Custom inline style for header */
+  headerStyle?: CSSProperties;
+  /** Custom header renderer */
+  renderHeader?: (params: CollapsibleRowHeaderRenderParams) => ReactNode;
+  /** Children (typically TimelineItem components) */
+  children?: ReactNode;
+}

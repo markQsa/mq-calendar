@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { TimelineCalendar, TimelineItem, fiFI } from '../../src/react';
-import { CollapsiblePanel } from './components/CollapsiblePanel';
-import { PanelGroup } from './components/PanelGroup';
+import { TimelineCalendar, TimelineItem, fiFI, TimelineRow, TimelineRowGroup } from '../../src/react';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -80,73 +78,99 @@ function App() {
             setZoom(pixelsPerMs);
           }}
         >
-          <PanelGroup>
-            <CollapsiblePanel id="line-a" title="Production Line A" rowCount={2} defaultExpanded={true}>
-            <TimelineItem
-              startTime="2025-03-10"
-              duration="5 days"
-              row={0}
-            >
-              <div className="timeline-item blue">
-                Order #1234
-              </div>
-            </TimelineItem>
+          <TimelineRowGroup>
+            {/* Collapsible row with header */}
+            <TimelineRow id="line-a" label="Production Line A" rowCount={2} collapsible={true} defaultExpanded={true}>
+              <TimelineItem
+                startTime="2025-03-10"
+                duration="5 days"
+                row={0}
+              >
+                <div className="timeline-item blue">
+                  Order #1234
+                </div>
+              </TimelineItem>
 
-            <TimelineItem
-              startTime="2025-03-18"
-              duration="3 days"
-              row={0}
-            >
-              <div className="timeline-item green">
-                Order #1235
-              </div>
-            </TimelineItem>
+              <TimelineItem
+                startTime="2025-03-18"
+                duration="3 days"
+                row={0}
+              >
+                <div className="timeline-item green">
+                  Order #1235
+                </div>
+              </TimelineItem>
 
-            <TimelineItem
-              startTime="2025-03-25"
-              duration="1 week"
-              row={1}
-            >
-              <div className="timeline-item orange">
-                Order #1236
-              </div>
-            </TimelineItem>
-          </CollapsiblePanel>
+              <TimelineItem
+                startTime="2025-03-25"
+                duration="1 week"
+                row={1}
+              >
+                <div className="timeline-item orange">
+                  Order #1236
+                </div>
+              </TimelineItem>
+            </TimelineRow>
 
-          <CollapsiblePanel id="line-b" title="Production Line B" rowCount={1} defaultExpanded={true}>
-            <TimelineItem
-              startTime="2025-03-12"
-              duration="4 days"
-              row={0}
-            >
-              <div className="timeline-item purple">
-                Order #1240
-              </div>
-            </TimelineItem>
+            {/* Collapsible row with header */}
+            <TimelineRow id="line-b" label="Production Line B" rowCount={1} collapsible={true} defaultExpanded={true}>
+              <TimelineItem
+                startTime="2025-03-12"
+                duration="4 days"
+                row={0}
+              >
+                <div className="timeline-item purple">
+                  Order #1240
+                </div>
+              </TimelineItem>
 
-            <TimelineItem
-              startTime="2025-03-20"
-              duration="6 days"
-              row={0}
-            >
-              <div className="timeline-item cyan">
-                Order #1241
-              </div>
-            </TimelineItem>
-          </CollapsiblePanel>
+              <TimelineItem
+                startTime="2025-03-20"
+                duration="6 days"
+                row={0}
+              >
+                <div className="timeline-item cyan">
+                  Order #1241
+                </div>
+              </TimelineItem>
+            </TimelineRow>
 
-          <CollapsiblePanel id="line-c" title="Production Line C" rowCount={1} defaultExpanded={false}>
-            <TimelineItem
-              startTime="2025-03-15"
-              duration="2 days"
-              row={0}
-            >
-              <div className="timeline-item red">
-                Order #1250
-              </div>
-            </TimelineItem>
-          </CollapsiblePanel>
-          </PanelGroup>
+            {/* Collapsible row, collapsed by default */}
+            <TimelineRow id="line-c" label="Production Line C" rowCount={1} collapsible={true} defaultExpanded={false}>
+              <TimelineItem
+                startTime="2025-03-15"
+                duration="2 days"
+                row={0}
+              >
+                <div className="timeline-item red">
+                  Order #1250
+                </div>
+              </TimelineItem>
+            </TimelineRow>
+
+            {/* Simple row without collapse functionality, but with header visible */}
+            <TimelineRow id="line-d" label="Production Line D (Simple)" rowCount={2} collapsible={false} showHeader={true}>
+              <TimelineItem
+                startTime="2025-03-08"
+                duration="1 week"
+                row={0}
+              >
+                <div className="timeline-item blue">
+                  Order #1260
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                startTime="2025-03-16"
+                duration="5 days"
+                row={1}
+              >
+                <div className="timeline-item green">
+                  Order #1261
+                </div>
+              </TimelineItem>
+            </TimelineRow>
+          </TimelineRowGroup>
         </TimelineCalendar>
       </div>
     </div>

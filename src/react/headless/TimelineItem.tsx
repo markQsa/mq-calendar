@@ -77,8 +77,20 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
       }}
       data-timeline-item
       data-row={row}
+      data-width={width}
     >
-      {children}
+      {React.Children.map(children, child => {
+        if (React.isValidElement(child)) {
+          // Clone child and add inline style to remove padding when width <= 20
+          return React.cloneElement(child as React.ReactElement<any>, {
+            style: {
+              ...child.props.style,
+              ...(width <= 20 && { paddingLeft: 0, paddingRight: 0 })
+            }
+          });
+        }
+        return child;
+      })}
     </div>
   );
 };
