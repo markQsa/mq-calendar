@@ -122,8 +122,8 @@ export interface TimelineCalendarProps {
   timeConverter?: TimeConverter;
   /** Locale for date/time formatting */
   locale?: CalendarLocale;
-  /** Theme configuration */
-  theme?: TimelineTheme;
+  /** Theme - either a preset name ('light' | 'dark') or a custom theme object */
+  theme?: 'light' | 'dark' | TimelineTheme;
   /** Custom class names */
   classNames?: TimelineClassNames;
   /** Custom inline styles */

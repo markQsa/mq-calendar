@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, CSSProperties } from 'react';
-import type { TimelineCalendarProps } from '../types';
+import type { TimelineCalendarProps, TimelineTheme } from '../types';
 import { useTimelineEngine } from '../hooks/useTimelineEngine';
 import { useResize } from '../hooks/useResize';
 import { useWheel } from '../hooks/useWheel';
@@ -10,6 +10,7 @@ import { CurrentTimeLine } from './CurrentTimeLine';
 import { TimelineContext } from './TimelineContext';
 import { defaultTimeConverter } from '../../utils/timeConverter';
 import { timeSpanToZoom, getEndOfPeriod } from '../../utils/dateUtils';
+import { themes } from '../themes';
 import type { HeaderCell } from '../../core/types';
 
 /**
@@ -26,7 +27,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   showCurrentTime = false,
   timeConverter = defaultTimeConverter,
   locale,
-  theme = {},
+  theme = 'light',
   classNames = {},
   styles = {},
   renderHeaderCell,
@@ -37,6 +38,14 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const { width: containerWidth } = useResize(rootRef);
+
+  // Resolve theme - either use preset name or custom object
+  const resolvedTheme = useMemo<TimelineTheme>(() => {
+    if (typeof theme === 'string') {
+      return themes[theme] || themes.light;
+    }
+    return theme;
+  }, [theme]);
 
   // Convert start/end dates using time converter
   const startTimestamp = useMemo(() => timeConverter.toTimestamp(startDate), [startDate, timeConverter]);
@@ -130,28 +139,28 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   // Build CSS variables from theme
   const cssVars = useMemo((): CSSProperties => {
     const vars: Record<string, string> = {
-      '--timeline-bg': theme.colors?.background || '#ffffff',
-      '--timeline-grid-line': theme.colors?.gridLine || '#e0e0e0',
-      '--timeline-grid-line-primary': theme.colors?.gridLinePrimary || '#b0b0b0',
-      '--timeline-header-bg': theme.colors?.headerBackground || '#f5f5f5',
-      '--timeline-header-text': theme.colors?.headerText || '#333333',
-      '--timeline-header-border': theme.colors?.headerBorder || '#d0d0d0',
-      '--timeline-current-time-line': theme.colors?.currentTimeLine || '#ff4444',
-      '--timeline-header-font': theme.fonts?.header || 'system-ui, sans-serif',
-      '--timeline-content-font': theme.fonts?.content || 'system-ui, sans-serif',
-      '--timeline-header-height': `${theme.spacing?.headerHeight || 80}px`,
-      '--timeline-header-row-height': `${theme.spacing?.headerRowHeight || 40}px`,
-      '--timeline-row-height': `${theme.spacing?.rowHeight || 60}px`
+      '--timeline-bg': resolvedTheme.colors?.background || '#ffffff',
+      '--timeline-grid-line': resolvedTheme.colors?.gridLine || '#e0e0e0',
+      '--timeline-grid-line-primary': resolvedTheme.colors?.gridLinePrimary || '#b0b0b0',
+      '--timeline-header-bg': resolvedTheme.colors?.headerBackground || '#f5f5f5',
+      '--timeline-header-text': resolvedTheme.colors?.headerText || '#333333',
+      '--timeline-header-border': resolvedTheme.colors?.headerBorder || '#d0d0d0',
+      '--timeline-current-time-line': resolvedTheme.colors?.currentTimeLine || '#ff4444',
+      '--timeline-header-font': resolvedTheme.fonts?.header || 'system-ui, sans-serif',
+      '--timeline-content-font': resolvedTheme.fonts?.content || 'system-ui, sans-serif',
+      '--timeline-header-height': `${resolvedTheme.spacing?.headerHeight || 80}px`,
+      '--timeline-header-row-height': `${resolvedTheme.spacing?.headerRowHeight || 40}px`,
+      '--timeline-row-height': `${resolvedTheme.spacing?.rowHeight || 60}px`
     };
 
     // Add time type specific colors
-    if (theme.colors?.timeTypes) {
+    if (resolvedTheme.colors?.timeTypes) {
       const timeTypes = ['century', 'decade', 'year', 'month', 'week', 'day', 'halfday', 'quarterday',
                          'hour', 'halfhour', 'quarterhour', 'minute', 'halfminute', 'quarterminute',
                          'second', 'millisecond'] as const;
 
       timeTypes.forEach(type => {
-        const typeColors = theme.colors?.timeTypes?.[type];
+        const typeColors = resolvedTheme.colors?.timeTypes?.[type];
         if (typeColors?.text) {
           vars[`--timeline-${type}-text`] = typeColors.text;
         }
@@ -162,7 +171,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     }
 
     return vars as CSSProperties;
-  }, [theme]);
+  }, [resolvedTheme]);
 
   // Handle header cell click to zoom to that period
   const handleHeaderCellClick = async (cell: HeaderCell) => {

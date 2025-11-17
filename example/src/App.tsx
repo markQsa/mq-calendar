@@ -3,9 +3,12 @@ import { TimelineCalendar, TimelineItem, fiFI } from '../../src/react';
 import { CollapsiblePanel } from './components/CollapsiblePanel';
 import { PanelGroup } from './components/PanelGroup';
 
+type ThemeMode = 'light' | 'dark';
+
 function App() {
   const [viewport, setViewport] = useState({ start: '', end: '' });
   const [zoom, setZoom] = useState(0);
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
 
   return (
     <div>
@@ -18,6 +21,35 @@ function App() {
           <li><code>Ctrl/Cmd + Mouse Wheel</code> - Zoom in/out (smooth, continuous)</li>
           <li>Zoom is centered on your cursor position</li>
         </ul>
+        <h2 style={{ marginTop: '15px' }}>Theme:</h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setThemeMode('light')}
+            style={{
+              padding: '8px 16px',
+              background: themeMode === 'light' ? '#3b82f6' : '#e5e7eb',
+              color: themeMode === 'light' ? 'white' : 'black',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Light
+          </button>
+          <button
+            onClick={() => setThemeMode('dark')}
+            style={{
+              padding: '8px 16px',
+              background: themeMode === 'dark' ? '#3b82f6' : '#e5e7eb',
+              color: themeMode === 'dark' ? 'white' : 'black',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Dark
+          </button>
+        </div>
         <h2 style={{ marginTop: '15px' }}>Current State:</h2>
         <ul>
           <li>Viewport: {viewport.start} to {viewport.end}</li>
@@ -37,6 +69,7 @@ function App() {
           showNavigation={false}
           showCurrentTime={true}  // Show current time line with auto-refresh
           locale={fiFI}  // Use Finnish locale
+          theme={themeMode}  // Use theme name: 'light' or 'dark'
           onViewportChange={(start, end) => {
             setViewport({
               start: start.toLocaleDateString(),
@@ -45,40 +78,6 @@ function App() {
           }}
           onZoomChange={(pixelsPerMs) => {
             setZoom(pixelsPerMs);
-          }}
-          theme={{
-            colors: {
-              background: '#ffffff',
-              gridLine: '#e5e7eb',
-              gridLinePrimary: '#9ca3af',
-              headerBackground: '#ffffff',
-              headerText: '#374151',
-              headerBorder: '#d1d5db',
-              currentTimeLine: '#ef4444',  // Bright red for current time line
-              timeTypes: {
-                century: { text: '#1f2937', line: '#1f2937' },
-                decade: { text: '#374151', line: '#374151' },
-                year: { text: '#4b5563', line: '#4b5563' },
-                month: { text: '#6b7280', line: '#6b7280' },
-                week: { text: '#6b7280', line: '#6b7280' },
-                day: { text: '#9ca3af', line: '#9ca3af' },
-                halfday: { text: '#9ca3af', line: '#9ca3af' },
-                quarterday: { text: '#9ca3af', line: '#9ca3af' },
-                hour: { text: '#d1d5db', line: '#d1d5db' },
-                halfhour: { text: '#d1d5db', line: '#d1d5db' },
-                quarterhour: { text: '#d1d5db', line: '#d1d5db' },
-                minute: { text: '#e5e7eb', line: '#e5e7eb' },
-                halfminute: { text: '#e5e7eb', line: '#e5e7eb' },
-                quarterminute: { text: '#e5e7eb', line: '#e5e7eb' },
-                second: { text: '#f3f4f6', line: '#f3f4f6' },
-                millisecond: { text: '#f9fafb', line: '#f9fafb' },
-              }
-            },
-            spacing: {
-              headerHeight: 80,
-              headerRowHeight: 40,
-              rowHeight: 70,
-            }
           }}
         >
           <PanelGroup>
