@@ -1,6 +1,6 @@
 {
   "name": "mq-timeline-calendar",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0-beta.5",
   "description": "A flexible, framework-agnostic timeline/calendar component with smooth scrolling and zooming",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
