@@ -36,8 +36,14 @@ interface TimelineRowGroupProps {
  */
 export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) => {
   const [rows, setRows] = useState<Map<string, TimelineRowState>>(new Map());
+  const rowsRef = useRef(rows);
   const orderCounterRef = useRef(0);
   const [version, setVersion] = useState(0);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
 
   const registerRow = useCallback((id: string, rowCount: number, defaultExpanded: boolean, collapsible: boolean) => {
     setRows(prev => {
@@ -72,8 +78,8 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, []);
 
   const getRowState = useCallback((id: string): TimelineRowState | undefined => {
-    return rows.get(id);
-  }, [rows]);
+    return rowsRef.current.get(id);
+  }, []);
 
   const getCalculatedPosition = useCallback((id: string): number => {
     const rowHeight = parseInt(getComputedStyle(document.documentElement)
@@ -82,7 +88,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
     const headerRows = headerHeight / rowHeight;
 
     let position = 0;
-    const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
+    const rowArray = Array.from(rowsRef.current.values()).sort((a, b) => a.order - b.order);
 
     for (const row of rowArray) {
       if (row.id === id) {
@@ -96,7 +102,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
     }
 
     return position;
-  }, [rows]);
+  }, []);
 
   const contextValue = useMemo(
     () => ({
@@ -108,7 +114,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
       version,
       rowsSize: rows.size
     }),
-    [getRowState, getCalculatedPosition, toggleRow, registerRow, unregisterRow, version, rows.size]
+    [version, rows.size]
   );
 
   return (
