@@ -7,6 +7,7 @@ import { useCurrentTime } from '../hooks/useCurrentTime';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarContent } from './CalendarContent';
 import { CurrentTimeLine } from './CurrentTimeLine';
+import { AvailabilityOverlay } from './AvailabilityOverlay';
 import { TimelineContext } from './TimelineContext';
 import { defaultTimeConverter } from '../../utils/timeConverter';
 import { timeSpanToZoom, getEndOfPeriod } from '../../utils/dateUtils';
@@ -25,6 +26,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   maxZoom,
   showNavigation = false,
   showCurrentTime = false,
+  currentTimeLineWidth = 2,
   timeConverter = defaultTimeConverter,
   locale,
   theme = 'light',
@@ -32,6 +34,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   styles = {},
   renderHeaderCell,
   renderGridLine,
+  availability,
   children,
   onViewportChange,
   onZoomChange
@@ -274,6 +277,9 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
           styles={styles}
           renderGridLine={renderGridLine}
         >
+          {/* Availability overlay - renders behind content */}
+          {availability && <AvailabilityOverlay config={availability} />}
+
           {children}
         </CalendarContent>
 
@@ -283,6 +289,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
             currentTime={currentTime}
             viewportStart={engine.getViewportState().start}
             pixelsPerMs={currentPixelsPerMs}
+            lineWidth={currentTimeLineWidth}
             styles={styles}
           />
         )}

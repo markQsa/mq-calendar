@@ -4,6 +4,65 @@ import type { TimeValue, DurationValue, TimeConverter } from '../utils/timeTypes
 import type { CalendarLocale } from '../utils/locales';
 
 /**
+ * Day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+ */
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/**
+ * Time of day in HH:MM format (e.g., "08:00", "17:30")
+ */
+export type TimeOfDay = string;
+
+/**
+ * Specific time range with exact start and end dates
+ */
+export interface SpecificTimeRange {
+  start: TimeValue;
+  end: TimeValue;
+}
+
+/**
+ * Daily time range (e.g., "08:00" to "17:30")
+ */
+export interface DailyTimeRange {
+  start: TimeOfDay;
+  end: TimeOfDay;
+}
+
+/**
+ * Weekly availability pattern - define hours for each day of week
+ */
+export interface WeeklyPattern {
+  [day: number]: DailyTimeRange[];
+}
+
+/**
+ * Simple pattern for weekdays and weekends
+ */
+export interface SimplePattern {
+  weekdays?: DailyTimeRange[];
+  weekends?: DailyTimeRange[];
+}
+
+/**
+ * Availability configuration
+ */
+export interface AvailabilityConfig {
+  /** Specific time ranges (exact dates) */
+  specific?: SpecificTimeRange[];
+  /** Weekly recurring pattern */
+  weekly?: WeeklyPattern;
+  /** Simple weekday/weekend pattern */
+  simple?: SimplePattern;
+  /** Style for available periods */
+  availableStyle?: CSSProperties;
+  /** Style for unavailable periods */
+  unavailableStyle?: CSSProperties;
+  /** Whether to show availability overlay (default: true) */
+  showOverlay?: boolean;
+}
+
+/**
  * Theme configuration for timeline styling
  */
 export interface TimelineTheme {
@@ -118,6 +177,8 @@ export interface TimelineCalendarProps {
   showNavigation?: boolean;
   /** Show current time line (default: false) */
   showCurrentTime?: boolean;
+  /** Current time line width in pixels (default: 2) */
+  currentTimeLineWidth?: number;
   /** Custom time converter (for Day.js, Luxon, etc.) */
   timeConverter?: TimeConverter;
   /** Locale for date/time formatting */
@@ -132,6 +193,8 @@ export interface TimelineCalendarProps {
   renderHeaderCell?: (params: HeaderCellRenderParams) => ReactNode;
   /** Custom grid line renderer */
   renderGridLine?: (params: GridLineRenderParams) => ReactNode;
+  /** Availability configuration for showing available/unavailable time periods */
+  availability?: AvailabilityConfig;
   /** Children (TimelineItem components) */
   children?: ReactNode;
   /** Callback when viewport changes */

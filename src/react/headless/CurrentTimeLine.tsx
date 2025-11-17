@@ -8,6 +8,8 @@ export interface CurrentTimeLineProps {
   viewportStart: number;
   /** Pixels per millisecond for positioning */
   pixelsPerMs: number;
+  /** Line width in pixels (default: 2) */
+  lineWidth?: number;
   /** Custom styles */
   styles?: TimelineStyles;
 }
@@ -19,10 +21,15 @@ export const CurrentTimeLine: React.FC<CurrentTimeLineProps> = ({
   currentTime,
   viewportStart,
   pixelsPerMs,
+  lineWidth = 2,
   styles = {}
 }) => {
   // Calculate position of current time line
   const position = (currentTime - viewportStart) * pixelsPerMs;
+
+  // Calculate marker position based on line width
+  const markerSize = Math.max(8, lineWidth * 2);
+  const markerOffset = -(markerSize / 2);
 
   return (
     <div
@@ -31,7 +38,7 @@ export const CurrentTimeLine: React.FC<CurrentTimeLineProps> = ({
         left: `${position}px`,
         top: 0,
         bottom: 0,
-        width: '2px',
+        width: `${lineWidth}px`,
         background: 'var(--timeline-current-time-line, #ff4444)',
         zIndex: 100,
         pointerEvents: 'none',
@@ -44,9 +51,9 @@ export const CurrentTimeLine: React.FC<CurrentTimeLineProps> = ({
         style={{
           position: 'absolute',
           top: '-4px',
-          left: '-3px',
-          width: '8px',
-          height: '8px',
+          left: `${markerOffset}px`,
+          width: `${markerSize}px`,
+          height: `${markerSize}px`,
           borderRadius: '50%',
           background: 'var(--timeline-current-time-line, #ff4444)',
           border: '2px solid var(--timeline-bg, #ffffff)'

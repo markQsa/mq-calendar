@@ -68,6 +68,21 @@ function App() {
           showCurrentTime={true}  // Show current time line with auto-refresh
           locale={fiFI}  // Use Finnish locale
           theme={themeMode}  // Use theme name: 'light' or 'dark'
+          availability={{
+            // Weekly pattern: define working hours for each day
+            weekly: {
+              1: [{ start: '08:00', end: '17:30' }], // Monday
+              2: [{ start: '09:00', end: '16:00' }], // Tuesday
+              3: [{ start: '08:00', end: '17:30' }], // Wednesday
+              4: [{ start: '09:00', end: '16:00' }], // Thursday
+              5: [{ start: '08:00', end: '15:00' }], // Friday
+            },
+            unavailableStyle: {
+              backgroundColor: themeMode === 'dark'
+                ? 'rgba(0, 0, 0, 0.3)'  // Darker overlay in dark mode
+                : 'rgba(156, 163, 175, 0.12)', // Light gray in light mode
+            }
+          }}
           onViewportChange={(start, end) => {
             setViewport({
               start: start.toLocaleDateString(),
