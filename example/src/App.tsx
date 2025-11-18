@@ -8,6 +8,12 @@ function App() {
   const [zoom, setZoom] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
 
+  // State for draggable item
+  const [dragItemTime, setDragItemTime] = useState(new Date('2025-04-10'));
+
+  // State for drag events
+  const [dragEvents, setDragEvents] = useState<string[]>([]);
+
   return (
     <div>
       <h1>Timeline Calendar Demo</h1>
@@ -54,6 +60,24 @@ function App() {
           <li>Zoom: {zoom.toFixed(8)} pixels/ms</li>
           <li>Required for full year: ~0.0000444 pixels/ms</li>
         </ul>
+        <h2 style={{ marginTop: '15px' }}>Drag Events:</h2>
+        <div style={{
+          maxHeight: '150px',
+          overflowY: 'auto',
+          background: '#f5f5f5',
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontFamily: 'monospace'
+        }}>
+          {dragEvents.length === 0 ? (
+            <div style={{ color: '#999' }}>No drag events yet. Try dragging the item in "Drag & Drop Demo"!</div>
+          ) : (
+            dragEvents.map((event, i) => (
+              <div key={i} style={{ marginBottom: '4px' }}>{event}</div>
+            ))
+          )}
+        </div>
       </div>
 
       <div className="timeline-wrapper">
@@ -182,6 +206,39 @@ function App() {
               >
                 <div className="timeline-item green">
                   Order #1261
+                </div>
+              </TimelineItem>
+            </TimelineRow>
+
+            {/* Drag & Drop Demo Row */}
+            <TimelineRow id="drag-demo" label="Drag & Drop Demo" rowCount={1} collapsible={true} defaultExpanded={true}>
+              <TimelineItem
+                startTime={dragItemTime}
+                duration="5 days"
+                row={0}
+                draggable={true}
+                onDragStart={(timestamp) => {
+                  setDragEvents(prev => [
+                    `[${new Date().toLocaleTimeString()}] onDragStart: ${new Date(timestamp).toLocaleString()}`,
+                    ...prev.slice(0, 19) // Keep last 20 events
+                  ]);
+                }}
+                onDrag={(currentTimestamp) => {
+                  setDragEvents(prev => [
+                    `[${new Date().toLocaleTimeString()}] onDrag: ${new Date(currentTimestamp).toLocaleString()}`,
+                    ...prev.slice(0, 19)
+                  ]);
+                }}
+                onDragEnd={(newTimestamp, originalTimestamp) => {
+                  setDragItemTime(new Date(newTimestamp));
+                  setDragEvents(prev => [
+                    `[${new Date().toLocaleTimeString()}] onDragEnd: ${new Date(newTimestamp).toLocaleString()} (was: ${new Date(originalTimestamp).toLocaleString()})`,
+                    ...prev.slice(0, 19)
+                  ]);
+                }}
+              >
+                <div className="timeline-item purple" style={{ border: '2px dashed #a855f7' }}>
+                  Drag Me!
                 </div>
               </TimelineItem>
             </TimelineRow>

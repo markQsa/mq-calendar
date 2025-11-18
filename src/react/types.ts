@@ -215,6 +215,14 @@ export interface TimelineItemProps {
   endTime?: TimeValue;
   /** Row/lane for vertical positioning */
   row?: number;
+  /** Enable drag and drop (default: false) */
+  draggable?: boolean;
+  /** Called when drag starts */
+  onDragStart?: (timestamp: number) => void;
+  /** Called during drag with current timestamp */
+  onDrag?: (currentTimestamp: number) => void;
+  /** Called when drag ends with the new timestamp */
+  onDragEnd?: (newTimestamp: number, originalTimestamp: number) => void;
   /** Custom class name */
   className?: string;
   /** Custom inline style */
