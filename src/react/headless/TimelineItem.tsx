@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { TimelineItemProps } from '../types';
 import { useTimelineContext } from './TimelineContext';
+import { useTimelineRowContext } from './TimelineRow';
 
 /**
  * Snap timestamp to nearest interval (default: 15 minutes)
@@ -18,20 +19,37 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   endTime,
   row = 0,
   draggable = false,
+  allowRowChange = false,
   onDragStart,
   onDrag,
+  onRowChange,
   onDragEnd,
   className,
   style,
   children
 }) => {
   const { engine, timeConverter, refreshCounter } = useTimelineContext();
+  const rowContext = useTimelineRowContext();
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
   const [draggedTimestamp, setDraggedTimestamp] = useState<number | null>(null);
-  const dragStartRef = useRef<{ x: number; startTimestamp: number } | null>(null);
+  const [draggedRow, setDraggedRow] = useState<number | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number; startTimestamp: number; startRow: number; rowOffset: number } | null>(null);
   const currentDraggedTimestamp = useRef<number | null>(null);
+  const currentDraggedRow = useRef<number | null>(null);
+  const dragMode = useRef<'horizontal' | 'vertical' | null>(null);
+
+  // Helper to convert absolute row to relative row within container
+  const absoluteToRelativeRow = (absoluteRow: number): number => {
+    if (!rowContext) return absoluteRow;
+    const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+    const headerHeight = 40;
+    const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
+    const containerStartRow = rowContext.startRow + headerRows;
+    return absoluteRow - containerStartRow;
+  };
 
   // Calculate position, width, and visibility
   const { left, width, isVisible } = useMemo(() => {
@@ -74,8 +92,11 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   const top = useMemo(() => {
     const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
-    return row * rowHeightPx;
-  }, [row]);
+
+    // Use dragged row while dragging vertically, otherwise use the prop
+    const effectiveRow = isDragging && draggedRow !== null ? draggedRow : row;
+    return effectiveRow * rowHeightPx;
+  }, [row, isDragging, draggedRow]);
 
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -84,9 +105,26 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
     e.preventDefault();
     const startTimestamp = timeConverter.toTimestamp(startTime);
 
+    // Calculate row offset within the TimelineRow container
+    // The row prop we receive is already the absolute row position
+    // We need to calculate the relative row within the container
+    let rowOffset = row;
+    if (rowContext) {
+      // Account for header rows if present
+      const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+        .getPropertyValue('--timeline-row-height') || '60');
+      const headerHeight = 40;
+      const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
+      const containerStartRow = rowContext.startRow + headerRows;
+      rowOffset = row - containerStartRow;
+    }
+
     dragStartRef.current = {
       x: e.clientX,
-      startTimestamp
+      y: e.clientY,
+      startTimestamp,
+      startRow: row,
+      rowOffset
     };
 
     let dragStarted = false;
@@ -96,43 +134,107 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
       if (!dragStartRef.current) return;
 
       const deltaX = moveEvent.clientX - dragStartRef.current.x;
+      const deltaY = moveEvent.clientY - dragStartRef.current.y;
 
       // Only start dragging after threshold is exceeded
-      if (!dragStarted && Math.abs(deltaX) < DRAG_THRESHOLD) {
+      if (!dragStarted && Math.abs(deltaX) < DRAG_THRESHOLD && Math.abs(deltaY) < DRAG_THRESHOLD) {
         return;
       }
 
       if (!dragStarted) {
         dragStarted = true;
+
+        // Determine drag mode based on initial movement direction
+        if (allowRowChange && Math.abs(deltaY) > Math.abs(deltaX)) {
+          // Vertical drag (row change)
+          dragMode.current = 'vertical';
+        } else {
+          // Horizontal drag (time change)
+          dragMode.current = 'horizontal';
+        }
+
         setIsDragging(true);
         setDraggedTimestamp(startTimestamp);
+        setDraggedRow(row);
         currentDraggedTimestamp.current = startTimestamp;
-        onDragStart?.(startTimestamp);
+        currentDraggedRow.current = row;
+        onDragStart?.(startTimestamp, absoluteToRelativeRow(row));
       }
 
-      const pixelsPerMs = engine.getZoomState().pixelsPerMs;
-      const deltaTimeMs = deltaX / pixelsPerMs;
-      const rawTimestamp = dragStartRef.current.startTimestamp + deltaTimeMs;
-      const snappedTimestamp = snapToInterval(rawTimestamp);
+      // Handle dragging based on mode
+      if (dragMode.current === 'horizontal') {
+        // Horizontal drag - change time only
+        const pixelsPerMs = engine.getZoomState().pixelsPerMs;
+        const deltaTimeMs = deltaX / pixelsPerMs;
+        const rawTimestamp = dragStartRef.current.startTimestamp + deltaTimeMs;
+        const snappedTimestamp = snapToInterval(rawTimestamp);
 
-      currentDraggedTimestamp.current = snappedTimestamp;
-      setDraggedTimestamp(snappedTimestamp);
-      onDrag?.(snappedTimestamp);
+        currentDraggedTimestamp.current = snappedTimestamp;
+        setDraggedTimestamp(snappedTimestamp);
+        onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!));
+      } else if (dragMode.current === 'vertical') {
+        // Vertical drag - change row only
+        const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+          .getPropertyValue('--timeline-row-height') || '60');
+        const deltaRows = Math.round(deltaY / rowHeightPx);
+
+        // Calculate new row offset within the container
+        let newRowOffset = dragStartRef.current.rowOffset + deltaRows;
+
+        // Constrain to available rows within TimelineRow
+        if (rowContext) {
+          // Get the rowCount from TimelineRow context and constrain
+          const maxRowOffset = rowContext.rowCount - 1;
+          newRowOffset = Math.max(0, Math.min(newRowOffset, maxRowOffset));
+
+          // Calculate absolute row position
+          const headerHeight = 40;
+          const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
+          const containerStartRow = rowContext.startRow + headerRows;
+          const newRow = containerStartRow + newRowOffset;
+
+          if (newRow !== currentDraggedRow.current) {
+            const oldRow = currentDraggedRow.current!;
+            currentDraggedRow.current = newRow;
+            setDraggedRow(newRow);
+            onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow));
+          }
+
+          onDrag?.(currentDraggedTimestamp.current!, absoluteToRelativeRow(newRow));
+        } else {
+          // No container, just prevent negative rows
+          newRowOffset = Math.max(0, newRowOffset);
+
+          if (newRowOffset !== currentDraggedRow.current) {
+            const oldRow = currentDraggedRow.current!;
+            currentDraggedRow.current = newRowOffset;
+            setDraggedRow(newRowOffset);
+            onRowChange?.(newRowOffset, oldRow);
+          }
+
+          onDrag?.(currentDraggedTimestamp.current!, newRowOffset);
+        }
+      }
     };
 
     const handleMouseUp = () => {
       if (!dragStartRef.current) return;
 
       // Only call onDragEnd if drag actually started (moved beyond threshold)
-      if (dragStarted && currentDraggedTimestamp.current !== null) {
+      if (dragStarted && currentDraggedTimestamp.current !== null && currentDraggedRow.current !== null) {
         const originalTimestamp = dragStartRef.current.startTimestamp;
+        const originalRow = dragStartRef.current.startRow;
         const finalTimestamp = currentDraggedTimestamp.current;
+        const finalRow = currentDraggedRow.current;
 
         setIsDragging(false);
         setDraggedTimestamp(null);
+        setDraggedRow(null);
         currentDraggedTimestamp.current = null;
+        currentDraggedRow.current = null;
+        dragMode.current = null;
 
-        onDragEnd?.(finalTimestamp, originalTimestamp);
+        onDragEnd?.(finalTimestamp, originalTimestamp, absoluteToRelativeRow(finalRow), absoluteToRelativeRow(originalRow));
       }
 
       dragStartRef.current = null;

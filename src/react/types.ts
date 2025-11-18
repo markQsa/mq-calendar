@@ -217,12 +217,16 @@ export interface TimelineItemProps {
   row?: number;
   /** Enable drag and drop (default: false) */
   draggable?: boolean;
+  /** Allow dragging between rows (default: false) */
+  allowRowChange?: boolean;
   /** Called when drag starts */
-  onDragStart?: (timestamp: number) => void;
+  onDragStart?: (timestamp: number, row: number) => void;
   /** Called during drag with current timestamp */
-  onDrag?: (currentTimestamp: number) => void;
-  /** Called when drag ends with the new timestamp */
-  onDragEnd?: (newTimestamp: number, originalTimestamp: number) => void;
+  onDrag?: (currentTimestamp: number, currentRow: number) => void;
+  /** Called when row changes during drag */
+  onRowChange?: (newRow: number, oldRow: number) => void;
+  /** Called when drag ends with the new timestamp and row */
+  onDragEnd?: (newTimestamp: number, originalTimestamp: number, newRow: number, originalRow: number) => void;
   /** Custom class name */
   className?: string;
   /** Custom inline style */
