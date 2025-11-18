@@ -159,22 +159,22 @@ function App() {
                 duration="5 days"
                 row={0}
                 draggable={true}
-                onDragStart={(timestamp, row) => {
+                onDragStart={(timestamp, row, rowGroupId) => {
                   setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] onDragStart: ${new Date(timestamp).toLocaleString()}, row ${row}`,
+                    `[${new Date().toLocaleTimeString()}] onDragStart: ${new Date(timestamp).toLocaleString()}, row ${row}, group ${rowGroupId}`,
                     ...prev.slice(0, 19) // Keep last 20 events
                   ]);
                 }}
-                onDrag={(currentTimestamp, currentRow) => {
+                onDrag={(currentTimestamp, currentRow, currentRowGroupId) => {
                   setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] onDrag: ${new Date(currentTimestamp).toLocaleString()}, row ${currentRow}`,
+                    `[${new Date().toLocaleTimeString()}] onDrag: ${new Date(currentTimestamp).toLocaleString()}, row ${currentRow}, group ${currentRowGroupId}`,
                     ...prev.slice(0, 19)
                   ]);
                 }}
-                onDragEnd={(newTimestamp, originalTimestamp, newRow, originalRow) => {
+                onDragEnd={(newTimestamp, originalTimestamp, newRow, originalRow, newRowGroupId, originalRowGroupId) => {
                   setDragItemTime(new Date(newTimestamp));
                   setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] onDragEnd: ${new Date(newTimestamp).toLocaleString()}, row ${newRow} (was: ${new Date(originalTimestamp).toLocaleString()}, row ${originalRow})`,
+                    `[${new Date().toLocaleTimeString()}] onDragEnd: ${new Date(newTimestamp).toLocaleString()}, row ${newRow}, group ${newRowGroupId} (was: row ${originalRow}, group ${originalRowGroupId})`,
                     ...prev.slice(0, 19)
                   ]);
                 }}
@@ -193,34 +193,31 @@ function App() {
                 row={dragItemRow2}
                 draggable={true}
                 allowRowChange={true}
-                onDragStart={(timestamp, row) => {
+                onDragStart={(timestamp, row, rowGroupId) => {
                   setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDragStart: ${new Date(timestamp).toLocaleString()}, row ${row}`,
+                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDragStart: ${new Date(timestamp).toLocaleString()}, row ${row}, group ${rowGroupId}`,
                     ...prev.slice(0, 19)
                   ]);
                 }}
-                onDrag={(currentTimestamp, currentRow) => {
+                onDrag={(currentTimestamp, currentRow, currentRowGroupId) => {
                   setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDrag: ${new Date(currentTimestamp).toLocaleString()}, row ${currentRow}`,
+                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDrag: ${new Date(currentTimestamp).toLocaleString()}, row ${currentRow}, group ${currentRowGroupId}`,
                     ...prev.slice(0, 19)
                   ]);
                 }}
-                onRowChange={(newRow, oldRow) => {
+                onRowChange={(newRow, oldRow, newRowGroupId, oldRowGroupId) => {
                   setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onRowChange: row ${oldRow} → ${newRow}`,
+                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onRowChange: row ${oldRow} → ${newRow}, group ${oldRowGroupId} → ${newRowGroupId}`,
                     ...prev.slice(0, 19)
                   ]);
                 }}
-                onDragEnd={(newTimestamp, originalTimestamp, newRow, originalRow) => {
+                onDragEnd={(newTimestamp, originalTimestamp, newRow, originalRow, newRowGroupId, originalRowGroupId) => {
                   setDragItemTime2(new Date(newTimestamp));
                   setDragItemRow2(newRow);
                   setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDragEnd: ${new Date(newTimestamp).toLocaleString()}, row ${newRow} (was: ${new Date(originalTimestamp).toLocaleString()}, row ${originalRow})`,
+                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDragEnd: ${new Date(newTimestamp).toLocaleString()}, row ${newRow}, group ${newRowGroupId} (was: row ${originalRow}, group ${originalRowGroupId})`,
                     ...prev.slice(0, 19)
-                  ]);
-                }}
-              >
-                <div className="timeline-item cyan" style={{ border: '2px dashed #06b6d4' }}>
+                  ]);Lb6d4' }}>
                   Drag Me Vertically!
                 </div>
               </TimelineItem>

@@ -12,6 +12,7 @@ interface TimelineRowState {
 interface TimelineRowGroupContextValue {
   getRowState: (id: string) => TimelineRowState | undefined;
   getCalculatedPosition: (id: string) => number;
+  getRowAtAbsolutePosition: (absoluteRow: number) => { rowId: string; relativeRow: number } | null;
   toggleRow: (id: string) => void;
   registerRow: (id: string, rowCount: number, defaultExpanded: boolean, collapsible: boolean) => void;
   unregisterRow: (id: string) => void;
@@ -98,17 +99,51 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
     return position;
   }, [rows]);
 
+  const getRowAtAbsolutePosition = useCallback((absoluteRow: number): { rowId: string; relativeRow: number } | null => {
+    const rowHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+    const headerHeight = 40;
+    const headerRows = headerHeight / rowHeight;
+
+    let currentPosition = 0;
+    const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
+
+    for (const row of rowArray) {
+      if (!row.isExpanded) {
+        // Collapsed row - only has header
+        const rowHeaderRows = row.collapsible ? headerRows : 0;
+        currentPosition += rowHeaderRows;
+        continue;
+      }
+
+      const rowHeaderRows = row.collapsible ? headerRows : 0;
+      const rowStart = currentPosition + rowHeaderRows; // Start of content area
+      const rowEnd = rowStart + row.rowCount; // End of content area
+
+      // Check if absolute position is within this row's content area
+      if (absoluteRow >= rowStart && absoluteRow < rowEnd) {
+        const relativeRow = absoluteRow - rowStart;
+        return { rowId: row.id, relativeRow };
+      }
+
+      currentPosition = rowEnd;
+    }
+
+    return null;
+  }, [rows]);
+
   const contextValue = useMemo(
     () => ({
       getRowState,
       getCalculatedPosition,
+      getRowAtAbsolutePosition,
       toggleRow,
       registerRow,
       unregisterRow,
       version,
       rowsSize: rows.size
     }),
-    [getRowState, getCalculatedPosition, toggleRow, registerRow, unregisterRow, version, rows.size]
+    [getRowState, getCalculatedPosition, getRowAtAbsolutePosition, toggleRow, registerRow, unregisterRow, version, rows.size]
   );
 
   return (
@@ -119,6 +154,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
 };
 
 interface TimelineRowContextValue {
+  id: string;
   startRow: number;
   rowCount: number;
   isExpanded: boolean;
@@ -218,12 +254,13 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
   const contextValue = useMemo(
     () => ({
+      id: rowId,
       startRow: calculatedStartRow,
       rowCount,
       isExpanded,
       collapsible
     }),
-    [calculatedStartRow, rowCount, isExpanded, collapsible]
+    [rowId, calculatedStartRow, rowCount, isExpanded, collapsible]
   );
 
   // Default header renderer

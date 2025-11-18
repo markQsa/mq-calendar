@@ -30,14 +30,16 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
 }) => {
   const { engine, timeConverter, refreshCounter } = useTimelineContext();
   const rowContext = useTimelineRowContext();
+  // const rowGroupContext = useTimelineRowGroup(); // For future cross-TimelineRow dragging
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
   const [draggedTimestamp, setDraggedTimestamp] = useState<number | null>(null);
   const [draggedRow, setDraggedRow] = useState<number | null>(null);
-  const dragStartRef = useRef<{ x: number; y: number; startTimestamp: number; startRow: number; rowOffset: number } | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number; startTimestamp: number; startRow: number; rowOffset: number; rowGroupId: string | undefined } | null>(null);
   const currentDraggedTimestamp = useRef<number | null>(null);
   const currentDraggedRow = useRef<number | null>(null);
+  const currentDraggedRowGroupId = useRef<string | undefined>(undefined);
   const dragMode = useRef<'horizontal' | 'vertical' | null>(null);
 
   // Helper to convert absolute row to relative row within container
@@ -124,7 +126,8 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
       y: e.clientY,
       startTimestamp,
       startRow: row,
-      rowOffset
+      rowOffset,
+      rowGroupId: rowContext?.id
     };
 
     let dragStarted = false;
@@ -158,7 +161,8 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
         setDraggedRow(row);
         currentDraggedTimestamp.current = startTimestamp;
         currentDraggedRow.current = row;
-        onDragStart?.(startTimestamp, absoluteToRelativeRow(row));
+        currentDraggedRowGroupId.current = rowContext?.id;
+        onDragStart?.(startTimestamp, absoluteToRelativeRow(row), rowContext?.id);
       }
 
       // Handle dragging based on mode
@@ -171,23 +175,21 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
 
         currentDraggedTimestamp.current = snappedTimestamp;
         setDraggedTimestamp(snappedTimestamp);
-        onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!));
+        onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!), currentDraggedRowGroupId.current);
       } else if (dragMode.current === 'vertical') {
         // Vertical drag - change row only
         const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
           .getPropertyValue('--timeline-row-height') || '60');
         const deltaRows = Math.round(deltaY / rowHeightPx);
 
-        // Calculate new row offset within the container
-        let newRowOffset = dragStartRef.current.rowOffset + deltaRows;
-
-        // Constrain to available rows within TimelineRow
+        // For now, constrain dragging within the same TimelineRow
+        // Cross-TimelineRow dragging requires architectural changes (portals/re-parenting)
         if (rowContext) {
-          // Get the rowCount from TimelineRow context and constrain
+          // Constrain within current TimelineRow
+          let newRowOffset = dragStartRef.current.rowOffset + deltaRows;
           const maxRowOffset = rowContext.rowCount - 1;
           newRowOffset = Math.max(0, Math.min(newRowOffset, maxRowOffset));
 
-          // Calculate absolute row position
           const headerHeight = 40;
           const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
           const containerStartRow = rowContext.startRow + headerRows;
@@ -197,13 +199,13 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
             const oldRow = currentDraggedRow.current!;
             currentDraggedRow.current = newRow;
             setDraggedRow(newRow);
-            onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow));
+            onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow), rowContext.id, rowContext.id);
           }
 
-          onDrag?.(currentDraggedTimestamp.current!, absoluteToRelativeRow(newRow));
+          onDrag?.(currentDraggedTimestamp.current!, absoluteToRelativeRow(newRow), rowContext.id);
         } else {
-          // No container, just prevent negative rows
-          newRowOffset = Math.max(0, newRowOffset);
+          // No container at all
+          const newRowOffset = Math.max(0, dragStartRef.current.rowOffset + deltaRows);
 
           if (newRowOffset !== currentDraggedRow.current) {
             const oldRow = currentDraggedRow.current!;
@@ -224,17 +226,20 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
       if (dragStarted && currentDraggedTimestamp.current !== null && currentDraggedRow.current !== null) {
         const originalTimestamp = dragStartRef.current.startTimestamp;
         const originalRow = dragStartRef.current.startRow;
+        const originalRowGroupId = dragStartRef.current.rowGroupId;
         const finalTimestamp = currentDraggedTimestamp.current;
         const finalRow = currentDraggedRow.current;
+        const finalRowGroupId = currentDraggedRowGroupId.current;
 
         setIsDragging(false);
         setDraggedTimestamp(null);
         setDraggedRow(null);
         currentDraggedTimestamp.current = null;
         currentDraggedRow.current = null;
+        currentDraggedRowGroupId.current = undefined;
         dragMode.current = null;
 
-        onDragEnd?.(finalTimestamp, originalTimestamp, absoluteToRelativeRow(finalRow), absoluteToRelativeRow(originalRow));
+        onDragEnd?.(finalTimestamp, originalTimestamp, absoluteToRelativeRow(finalRow), absoluteToRelativeRow(originalRow), finalRowGroupId, originalRowGroupId);
       }
 
       dragStartRef.current = null;

@@ -220,13 +220,13 @@ export interface TimelineItemProps {
   /** Allow dragging between rows (default: false) */
   allowRowChange?: boolean;
   /** Called when drag starts */
-  onDragStart?: (timestamp: number, row: number) => void;
+  onDragStart?: (timestamp: number, row: number, rowGroupId?: string) => void;
   /** Called during drag with current timestamp */
-  onDrag?: (currentTimestamp: number, currentRow: number) => void;
+  onDrag?: (currentTimestamp: number, currentRow: number, currentRowGroupId?: string) => void;
   /** Called when row changes during drag */
-  onRowChange?: (newRow: number, oldRow: number) => void;
+  onRowChange?: (newRow: number, oldRow: number, newRowGroupId?: string, oldRowGroupId?: string) => void;
   /** Called when drag ends with the new timestamp and row */
-  onDragEnd?: (newTimestamp: number, originalTimestamp: number, newRow: number, originalRow: number) => void;
+  onDragEnd?: (newTimestamp: number, originalTimestamp: number, newRow: number, originalRow: number, newRowGroupId?: string, originalRowGroupId?: string) => void;
   /** Custom class name */
   className?: string;
   /** Custom inline style */
