@@ -1,6 +1,7 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import type { GridLine } from '../../core/types';
 import type { TimelineClassNames, TimelineStyles, GridLineRenderParams } from '../types';
+import { useTimelineRowGroup } from './TimelineRow';
 
 export interface CalendarContentProps {
   gridLines: GridLine[];
@@ -20,6 +21,18 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
   renderGridLine,
   children
 }) => {
+  // Get row group context to calculate content height
+  const rowGroupContext = useTimelineRowGroup();
+  const [minHeight, setMinHeight] = useState(200);
+
+  // Calculate minimum height needed for all rows whenever context changes
+  useEffect(() => {
+    if (rowGroupContext) {
+      const height = rowGroupContext.getTotalHeight();
+      setMinHeight(height);
+    }
+  }, [rowGroupContext, rowGroupContext?.version]);
+
   // Find the maximum position to set viewBox width
   const maxPosition = gridLines.length > 0
     ? Math.max(...gridLines.map(l => l.position)) + 100
@@ -34,7 +47,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
         overflow: 'hidden',
         background: 'var(--timeline-bg)',
         fontFamily: 'var(--timeline-content-font)',
-        minHeight: '200px',
+        minHeight: `${minHeight}px`,
         ...styles.content
       }}
       data-timeline-content

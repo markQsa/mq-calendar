@@ -13,6 +13,7 @@ interface TimelineRowGroupContextValue {
   getRowState: (id: string) => TimelineRowState | undefined;
   getCalculatedPosition: (id: string) => number;
   getRowAtAbsolutePosition: (absoluteRow: number) => { rowId: string; relativeRow: number } | null;
+  getTotalHeight: () => number;
   toggleRow: (id: string) => void;
   registerRow: (id: string, rowCount: number, defaultExpanded: boolean, collapsible: boolean) => void;
   unregisterRow: (id: string) => void;
@@ -132,18 +133,37 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
     return null;
   }, [rows]);
 
+  const getTotalHeight = useCallback((): number => {
+    const rowHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+    const headerHeight = 40;
+    const headerRows = headerHeight / rowHeight;
+
+    let totalHeight = 0;
+    const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
+
+    for (const row of rowArray) {
+      const rowHeaderRows = row.collapsible ? headerRows : 0;
+      const contentRows = row.isExpanded ? row.rowCount : 0;
+      totalHeight += (rowHeaderRows + contentRows) * rowHeight;
+    }
+
+    return Math.max(totalHeight, 200); // At least 200px
+  }, [rows]);
+
   const contextValue = useMemo(
     () => ({
       getRowState,
       getCalculatedPosition,
       getRowAtAbsolutePosition,
+      getTotalHeight,
       toggleRow,
       registerRow,
       unregisterRow,
       version,
       rowsSize: rows.size
     }),
-    [getRowState, getCalculatedPosition, getRowAtAbsolutePosition, toggleRow, registerRow, unregisterRow, version, rows.size]
+    [getRowState, getCalculatedPosition, getRowAtAbsolutePosition, getTotalHeight, toggleRow, registerRow, unregisterRow, version, rows.size]
   );
 
   return (
