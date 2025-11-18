@@ -217,7 +217,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   children
 }) => {
   const groupContext = useTimelineRowGroup();
-  const { engine, timeConverter } = useTimelineContext();
+  const { engine, timeConverter, refreshCounter } = useTimelineContext();
 
   // Generate ID if not provided
   const rowId = id || `row-${Math.random().toString(36).substr(2, 9)}`;
@@ -298,7 +298,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     const minItems = aggregation.minItemsForAggregation ?? 50;
 
     return shouldUseAggregatedView(viewportDuration, thresholdMs, itemCount, minItems);
-  }, [engine, timeConverter, aggregation, children]);
+  }, [engine, timeConverter, aggregation, children, refreshCounter]);
 
   // Extract and aggregate items if needed
   const aggregatedPeriods = useMemo(() => {
@@ -336,7 +336,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     const availability: AvailabilityConfig | undefined = undefined; // TODO: Get from context
 
     return aggregateItemsByPeriod(items, viewport.start, viewport.end, granularity, availability);
-  }, [useAggregation, engine, timeConverter, children, aggregation]);
+  }, [useAggregation, engine, timeConverter, children, aggregation, refreshCounter]);
 
   const contextValue = useMemo(
     () => ({
