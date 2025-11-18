@@ -13,8 +13,9 @@ A flexible, headless timeline/calendar component for React with smooth scrolling
 - 🎨 **Built-in themes** - Light and dark themes included
 - 🖱️ **Drag & Drop** - Move items horizontally (time) and vertically (rows)
 - 📊 **Row grouping** - Organize timeline items with collapsible row groups
-- 🌍 **Localization** - Support for multiple locales (Finnish included)
+- 🌍 **Localization** - Support for 13+ European languages
 - ⏰ **Availability overlay** - Show working hours and available time periods
+- 📊 **Smart aggregation** - Auto-aggregate items when zoomed out for better performance
 - ⚛️ **React first** - Optimized React components with hooks
 - 📦 **TypeScript** - Full type safety and IntelliSense support
 - 🚀 **Framework-agnostic core** - Core engine can be used with any framework
@@ -190,6 +191,9 @@ Organize timeline items into rows with optional collapsible headers.
 | `defaultExpanded` | `boolean` | `true` | Initial expanded state |
 | `headerClassName` | `string` | - | CSS class for header |
 | `headerStyle` | `CSSProperties` | - | Inline styles for header |
+| `aggregation` | `AggregationConfig` | - | Aggregation configuration (see Aggregation section) |
+| `renderAggregatedPeriod` | `(params) => ReactNode` | - | Custom renderer for aggregated periods |
+| `getAggregatedTypeStyle` | `(type: string) => StyleObject` | - | Function to get style for aggregated bar segments |
 
 ## Drag and Drop
 
@@ -319,6 +323,112 @@ Show available and unavailable time periods:
 >
 ```
 
+## Timeline Aggregation
+
+When working with large datasets, the timeline can automatically aggregate items into grouped periods for better performance and visualization.
+
+### How It Works
+
+When you zoom out far enough (beyond the configured threshold) and have many items, the timeline automatically switches from individual item rendering to an aggregated view. The aggregated view shows:
+
+- **Stacked bar charts** grouped by week or month
+- **Occupancy percentage** - how much of the available time is occupied
+- **Item counts** by type
+- **Color-coded segments** representing different item types
+
+### Configuration
+
+Add the `aggregation` prop to `TimelineRow`:
+
+```tsx
+<TimelineRow
+  id="production-line"
+  label="Production Line A"
+  rowCount={2}
+  aggregation={{
+    enabled: true,
+    threshold: "6 months",        // Switch to aggregated view when viewport > 6 months
+    granularity: "dynamic",        // "week" | "month" | "dynamic"
+    minItemsForAggregation: 50    // Only aggregate if row has 50+ items
+  }}
+  getAggregatedTypeStyle={(type) => ({
+    backgroundColor: type === 'urgent' ? '#ef4444' : '#3b82f6',
+    color: 'white'
+  })}
+  renderAggregatedPeriod={({ period, position, width, height }) => (
+    <div style={{ width, height }}>
+      Custom rendering for {period.start} - {period.end}
+    </div>
+  )}
+>
+  {/* Many TimelineItem components */}
+</TimelineRow>
+```
+
+### Aggregation Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Enable/disable aggregation |
+| `threshold` | `DurationValue` | `"6 months"` | Viewport duration that triggers aggregation |
+| `granularity` | `'week' \| 'month' \| 'dynamic'` | `"dynamic"` | How to group periods |
+| `minItemsForAggregation` | `number` | `50` | Minimum items needed to activate aggregation |
+
+### Custom Rendering
+
+You can customize the aggregated view rendering:
+
+```tsx
+<TimelineRow
+  aggregation={{ enabled: true }}
+  renderAggregatedPeriod={({ period, position, width, height }) => {
+    const { occupancyPercent, byType } = period;
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: position,
+          width,
+          height,
+          background: `linear-gradient(to top,
+            rgba(59, 130, 246, ${occupancyPercent / 100}) 0%,
+            rgba(59, 130, 246, 0.2) 100%)`
+        }}
+      >
+        <span>{occupancyPercent.toFixed(0)}%</span>
+      </div>
+    );
+  }}
+>
+```
+
+### Type-Based Styling
+
+Customize the appearance of different item types in aggregated view:
+
+```tsx
+<TimelineRow
+  aggregation={{ enabled: true }}
+  getAggregatedTypeStyle={(type) => {
+    const styles = {
+      'production': { backgroundColor: '#10b981', color: 'white' },
+      'maintenance': { backgroundColor: '#f59e0b', color: 'white' },
+      'downtime': { backgroundColor: '#ef4444', color: 'white' }
+    };
+    return styles[type] || { backgroundColor: '#6b7280', color: 'white' };
+  }}
+>
+```
+
+### Granularity Options
+
+- **`week`**: Always group by ISO weeks (Monday-Sunday)
+- **`month`**: Always group by calendar months
+- **`dynamic`**: Automatically choose based on viewport:
+  - Weeks for 6-12 month viewports
+  - Months for >12 month viewports
+
 ## Localization
 
 ```tsx
@@ -366,7 +476,10 @@ import type {
   TimeValue,
   DurationValue,
   CalendarLocale,
-  TimelineTheme
+  TimelineTheme,
+  AggregationConfig,
+  AggregatedPeriod,
+  AggregatedPeriodRenderParams
 } from 'mq-timeline-calendar/react';
 ```
 
@@ -511,6 +624,76 @@ function DraggableTimeline() {
           </TimelineItem>
         ))}
       </TimelineRow>
+    </TimelineCalendar>
+  );
+}
+```
+
+### Timeline with Aggregation
+
+```tsx
+function LargeDatasetTimeline() {
+  // Generate hundreds of items
+  const items = useMemo(() => {
+    const result = [];
+    for (let i = 0; i < 200; i++) {
+      const dayOffset = Math.floor(Math.random() * 365);
+      const types = ['production', 'maintenance', 'testing', 'downtime'];
+      result.push({
+        id: i,
+        startTime: addDays(new Date('2025-01-01'), dayOffset),
+        duration: `${Math.floor(Math.random() * 5) + 1} days`,
+        type: types[Math.floor(Math.random() * types.length)],
+        row: Math.floor(Math.random() * 3)
+      });
+    }
+    return result;
+  }, []);
+
+  return (
+    <TimelineCalendar
+      startDate={new Date('2025-01-01')}
+      endDate={new Date('2025-12-31')}
+      height="600px"
+      showCurrentTime={true}
+    >
+      <TimelineRowGroup>
+        <TimelineRow
+          id="production"
+          label="Production Line"
+          rowCount={3}
+          collapsible={true}
+          aggregation={{
+            enabled: true,
+            threshold: "6 months",
+            granularity: "dynamic",
+            minItemsForAggregation: 50
+          }}
+          getAggregatedTypeStyle={(type) => {
+            const styles = {
+              production: { backgroundColor: '#10b981', color: 'white' },
+              maintenance: { backgroundColor: '#f59e0b', color: 'white' },
+              testing: { backgroundColor: '#3b82f6', color: 'white' },
+              downtime: { backgroundColor: '#ef4444', color: 'white' }
+            };
+            return styles[type] || { backgroundColor: '#6b7280', color: 'white' };
+          }}
+        >
+          {items.map(item => (
+            <TimelineItem
+              key={item.id}
+              startTime={item.startTime}
+              duration={item.duration}
+              row={item.row}
+              type={item.type}
+            >
+              <div style={{ padding: '4px', fontSize: '12px' }}>
+                {item.type} #{item.id}
+              </div>
+            </TimelineItem>
+          ))}
+        </TimelineRow>
+      </TimelineRowGroup>
     </TimelineCalendar>
   );
 }
