@@ -103,12 +103,11 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
 
   // Handle wheel events (scroll and zoom)
   useWheel(rootRef, {
-    onWheel: (deltaX, deltaY) => {
+    onWheel: (deltaX) => {
       if (!engine) return;
 
-      // Horizontal scroll
-      const scrollDelta = deltaX !== 0 ? deltaX : deltaY;
-      engine.scroll(scrollDelta);
+      // Horizontal timeline scroll (deltaX is always the scroll amount from useWheel)
+      engine.scroll(deltaX);
       refresh();
 
       // Notify viewport change

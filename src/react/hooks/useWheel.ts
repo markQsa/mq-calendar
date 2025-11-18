@@ -30,9 +30,22 @@ export function useWheel(ref: RefObject<HTMLElement>, options: UseWheelOptions):
           options.onZoom(delta, clientX, clientY);
         }
       } else {
-        // Regular scroll
-        event.preventDefault();
-        options.onWheel(event.deltaX, event.deltaY, event);
+        // Detect scroll direction
+        const isHorizontalScroll = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+        const isShiftPressed = event.shiftKey;
+
+        // Handle horizontal timeline scrolling when:
+        // 1. Primary scroll direction is horizontal, OR
+        // 2. Shift key is pressed (allows vertical wheel to scroll timeline)
+        if (isHorizontalScroll || isShiftPressed) {
+          event.preventDefault();
+
+          // Use deltaX for horizontal scroll, or deltaY when Shift is pressed
+          const scrollDelta = isHorizontalScroll ? event.deltaX : event.deltaY;
+          options.onWheel(scrollDelta, 0, event);
+        }
+        // Otherwise, allow natural vertical scrolling (don't preventDefault)
+        // This enables the content area's native vertical scroll
       }
     };
 
