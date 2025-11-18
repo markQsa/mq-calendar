@@ -11,7 +11,22 @@ export { timeSpanToZoom } from '../utils/dateUtils';
 
 // Export locales and locale types
 export type { CalendarLocale } from '../utils/locales';
-export { enUS, fiFI, defaultLocale } from '../utils/locales';
+export {
+  enUS,
+  deDE,
+  frFR,
+  esES,
+  itIT,
+  ptPT,
+  nlNL,
+  svSE,
+  noNO,
+  daDK,
+  plPL,
+  ruRU,
+  fiFI,
+  defaultLocale
+} from '../utils/locales';
 
 // Export themes and theme types
 export type { ThemeName } from './themes';

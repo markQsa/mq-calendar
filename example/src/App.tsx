@@ -185,43 +185,6 @@ function App() {
               </TimelineItem>
             </TimelineRow>
 
-            {/* Drag & Drop Demo Row - Row Change Allowed */}
-            <TimelineRow id="drag-demo-vertical" label="Drag & Drop Demo (Row Change)" rowCount={3} collapsible={true} defaultExpanded={true}>
-              <TimelineItem
-                startTime={dragItemTime2}
-                duration="4 days"
-                row={dragItemRow2}
-                draggable={true}
-                allowRowChange={true}
-                onDragStart={(timestamp, row, rowGroupId) => {
-                  setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDragStart: ${new Date(timestamp).toLocaleString()}, row ${row}, group ${rowGroupId}`,
-                    ...prev.slice(0, 19)
-                  ]);
-                }}
-                onDrag={(currentTimestamp, currentRow, currentRowGroupId) => {
-                  setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDrag: ${new Date(currentTimestamp).toLocaleString()}, row ${currentRow}, group ${currentRowGroupId}`,
-                    ...prev.slice(0, 19)
-                  ]);
-                }}
-                onRowChange={(newRow, oldRow, newRowGroupId, oldRowGroupId) => {
-                  setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onRowChange: row ${oldRow} → ${newRow}, group ${oldRowGroupId} → ${newRowGroupId}`,
-                    ...prev.slice(0, 19)
-                  ]);
-                }}
-                onDragEnd={(newTimestamp, originalTimestamp, newRow, originalRow, newRowGroupId, originalRowGroupId) => {
-                  setDragItemTime2(new Date(newTimestamp));
-                  setDragItemRow2(newRow);
-                  setDragEvents(prev => [
-                    `[${new Date().toLocaleTimeString()}] [ROW-CHANGE] onDragEnd: ${new Date(newTimestamp).toLocaleString()}, row ${newRow}, group ${newRowGroupId} (was: row ${originalRow}, group ${originalRowGroupId})`,
-                    ...prev.slice(0, 19)
-                  ]);Lb6d4' }}>
-                  Drag Me Vertically!
-                </div>
-              </TimelineItem>
-            </TimelineRow>
           </TimelineRowGroup>
         </TimelineCalendar>
       </div>

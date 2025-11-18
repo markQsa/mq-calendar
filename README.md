@@ -322,13 +322,25 @@ Show available and unavailable time periods:
 ## Localization
 
 ```tsx
-import { fiFI } from 'mq-timeline-calendar/react';
+import { deDE } from 'mq-timeline-calendar/react';
 
-<TimelineCalendar locale={fiFI}>
+<TimelineCalendar locale={deDE}>
 ```
 
 Available locales:
-- `fiFI` - Finnish
+- `enUS` - English (US) - Default
+- `deDE` - German (Germany)
+- `frFR` - French (France)
+- `esES` - Spanish (Spain)
+- `itIT` - Italian (Italy)
+- `ptPT` - Portuguese (Portugal)
+- `nlNL` - Dutch (Netherlands)
+- `svSE` - Swedish (Sweden)
+- `noNO` - Norwegian (Norway)
+- `daDK` - Danish (Denmark)
+- `plPL` - Polish (Poland)
+- `ruRU` - Russian (Russia)
+- `fiFI` - Finnish (Finland)
 
 You can also create custom locales by implementing the `CalendarLocale` interface.
 
