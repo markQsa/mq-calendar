@@ -347,8 +347,9 @@ You can also create custom locales by implementing the `CalendarLocale` interfac
 ## Keyboard & Mouse Controls
 
 - **Horizontal Trackpad Swipe / Wheel**: Scroll horizontally through time
-- **Vertical Trackpad Swipe / Mouse Wheel**: Scroll vertically through rows (when overflow exists)
-- **Shift + Vertical Mouse Wheel**: Scroll horizontally through time (alternative for mouse users)
+- **Vertical Mouse Wheel (over header)**: Scroll horizontally through time
+- **Vertical Trackpad Swipe / Mouse Wheel (over content)**: Scroll vertically through rows (when overflow exists)
+- **Shift + Vertical Mouse Wheel**: Scroll horizontally through time (works anywhere)
 - **Ctrl/Cmd + Mouse Wheel**: Zoom in/out (centered on cursor position)
 - **Click header cells**: Zoom to that time period
 - **Drag items**: Move items in time or between rows (if enabled)

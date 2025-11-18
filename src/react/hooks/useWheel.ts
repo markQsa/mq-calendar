@@ -30,17 +30,22 @@ export function useWheel(ref: RefObject<HTMLElement>, options: UseWheelOptions):
           options.onZoom(delta, clientX, clientY);
         }
       } else {
+        // Check if the event happened over the header area
+        const target = event.target as HTMLElement;
+        const isOverHeader = target?.closest('[data-timeline-header]') !== null;
+
         // Detect scroll direction
         const isHorizontalScroll = Math.abs(event.deltaX) > Math.abs(event.deltaY);
         const isShiftPressed = event.shiftKey;
 
         // Handle horizontal timeline scrolling when:
         // 1. Primary scroll direction is horizontal, OR
-        // 2. Shift key is pressed (allows vertical wheel to scroll timeline)
-        if (isHorizontalScroll || isShiftPressed) {
+        // 2. Shift key is pressed (allows vertical wheel to scroll timeline), OR
+        // 3. Over header area (vertical scroll should scroll timeline, not content)
+        if (isHorizontalScroll || isShiftPressed || isOverHeader) {
           event.preventDefault();
 
-          // Use deltaX for horizontal scroll, or deltaY when Shift is pressed
+          // Use deltaX for horizontal scroll, or deltaY when over header/Shift is pressed
           const scrollDelta = isHorizontalScroll ? event.deltaX : event.deltaY;
           options.onWheel(scrollDelta, 0, event);
         }
