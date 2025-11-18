@@ -314,6 +314,69 @@ export interface TimelineRowProps {
   headerStyle?: CSSProperties;
   /** Custom header renderer */
   renderHeader?: (params: CollapsibleRowHeaderRenderParams) => ReactNode;
+  /** Aggregation configuration */
+  aggregation?: AggregationConfig;
+  /** Custom renderer for aggregated periods */
+  renderAggregatedPeriod?: (params: AggregatedPeriodRenderParams) => ReactNode;
+  /** Function to get style for aggregated bar type segments */
+  getAggregatedTypeStyle?: (type: string) => { backgroundColor?: string; color?: string };
   /** Children (typically TimelineItem components) */
   children?: ReactNode;
+}
+/**
+ * Granularity for aggregating timeline items
+ */
+export type AggregationGranularity = 'week' | 'month' | 'dynamic';
+
+/**
+ * Aggregated data for a time period
+ */
+export interface AggregatedPeriod {
+  /** Period start timestamp */
+  start: number;
+  /** Period end timestamp */
+  end: number;
+  /** Total available milliseconds in this period (based on availability config) */
+  totalAvailable: number;
+  /** Total occupied milliseconds in this period */
+  totalOccupied: number;
+  /** Occupancy percentage (0-100) */
+  occupancyPercent: number;
+  /** Breakdown by item type */
+  byType: Record<string, {
+    /** Total duration in ms for this type */
+    duration: number;
+    /** Number of items of this type */
+    count: number;
+    /** Percentage of total occupied time */
+    percentage: number;
+  }>;
+}
+
+/**
+ * Parameters for rendering an aggregated period
+ */
+export interface AggregatedPeriodRenderParams {
+  /** The aggregated period data */
+  period: AggregatedPeriod;
+  /** Horizontal position in pixels */
+  position: number;
+  /** Width in pixels */
+  width: number;
+  /** Height in pixels */
+  height: number;
+}
+
+/**
+ * Aggregation configuration
+ */
+export interface AggregationConfig {
+  /** Enable/disable aggregation (default: true) */
+  enabled?: boolean;
+  /** Viewport duration threshold to trigger aggregation (default: "6 months") */
+  threshold?: DurationValue;
+  /** Granularity for aggregation (default: "dynamic") */
+  granularity?: AggregationGranularity;
+  /** Minimum number of items to trigger aggregation (default: 50) */
+  minItemsForAggregation?: number;
 }

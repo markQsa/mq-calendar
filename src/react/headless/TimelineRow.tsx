@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { TimelineRowProps } from '../types';
+import type { TimelineRowProps, AvailabilityConfig } from '../types';
+import type { TimelineItemData } from '../../utils/aggregationUtils';
+import { aggregateItemsByPeriod, getGranularity, shouldUseAggregatedView } from '../../utils/aggregationUtils';
+import { AggregatedView } from './AggregatedView';
+import { useTimelineContext } from './TimelineContext';
 
 interface TimelineRowState {
   id: string;
@@ -207,9 +211,13 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   headerClassName,
   headerStyle,
   renderHeader,
+  aggregation,
+  renderAggregatedPeriod,
+  getAggregatedTypeStyle,
   children
 }) => {
   const groupContext = useTimelineRowGroup();
+  const { engine, timeConverter } = useTimelineContext();
 
   // Generate ID if not provided
   const rowId = id || `row-${Math.random().toString(36).substr(2, 9)}`;
@@ -271,6 +279,64 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       toggleRowFn(rowId);
     }
   }, [rowId, collapsible, toggleRowFn]);
+
+  // Aggregation logic
+  const useAggregation = useMemo(() => {
+    if (!engine || !timeConverter || !aggregation || aggregation.enabled === false) {
+      return false;
+    }
+
+    const viewport = engine.getViewportState();
+    const viewportDuration = viewport.end - viewport.start;
+
+    // Get threshold duration
+    const threshold = aggregation.threshold || '6 months';
+    const thresholdMs = timeConverter.parseDuration ? timeConverter.parseDuration(threshold) : 0;
+
+    // Count items
+    const itemCount = React.Children.count(children);
+    const minItems = aggregation.minItemsForAggregation ?? 50;
+
+    return shouldUseAggregatedView(viewportDuration, thresholdMs, itemCount, minItems);
+  }, [engine, timeConverter, aggregation, children]);
+
+  // Extract and aggregate items if needed
+  const aggregatedPeriods = useMemo(() => {
+    if (!useAggregation || !engine || !timeConverter) {
+      return null;
+    }
+
+    const viewport = engine.getViewportState();
+    const items: TimelineItemData[] = [];
+
+    // Extract item data from children
+    React.Children.forEach(children, (child) => {
+      if (React.isValidElement(child) && child.props.startTime) {
+        const startTime = timeConverter.toTimestamp(child.props.startTime);
+        const duration = child.props.duration && timeConverter.parseDuration
+          ? timeConverter.parseDuration(child.props.duration)
+          : child.props.endTime
+          ? timeConverter.toTimestamp(child.props.endTime) - startTime
+          : 0;
+
+        items.push({
+          startTime,
+          endTime: startTime + duration,
+          duration,
+          type: child.props.type || child.props.children?.props?.type || 'default'
+        });
+      }
+    });
+
+    // Determine granularity
+    const viewportDuration = viewport.end - viewport.start;
+    const granularity = getGranularity(viewportDuration, aggregation?.granularity || 'dynamic');
+
+    // Get availability config from somewhere (you may need to pass this through context)
+    const availability: AvailabilityConfig | undefined = undefined; // TODO: Get from context
+
+    return aggregateItemsByPeriod(items, viewport.start, viewport.end, granularity, availability);
+  }, [useAggregation, engine, timeConverter, children, aggregation]);
 
   const contextValue = useMemo(
     () => ({
@@ -373,24 +439,35 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             />
           )}
 
-          {/* Children - offset their row prop by startRow and account for header */}
-          {React.Children.map(children, (child) => {
-            if (React.isValidElement(child) && typeof child.props.row === 'number') {
-              const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
-              const absoluteRow = calculatedStartRow + headerRows + child.props.row;
+          {/* Render aggregated view or individual children */}
+          {useAggregation && aggregatedPeriods ? (
+            <AggregatedView
+              periods={aggregatedPeriods}
+              row={calculatedStartRow + ((collapsible && showHeader) ? headerHeight / rowHeight : 0)}
+              rowHeight={rowHeight}
+              getTypeStyle={getAggregatedTypeStyle}
+              renderPeriod={renderAggregatedPeriod}
+            />
+          ) : (
+            /* Children - offset their row prop by startRow and account for header */
+            React.Children.map(children, (child) => {
+              if (React.isValidElement(child) && typeof child.props.row === 'number') {
+                const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
+                const absoluteRow = calculatedStartRow + headerRows + child.props.row;
 
-              return React.cloneElement(child as React.ReactElement<any>, {
-                row: absoluteRow,
-                style: {
-                  ...child.props.style,
-                  marginTop: '4px',
-                  marginBottom: '4px',
-                  height: 'calc(var(--timeline-row-height) - 8px)'
-                }
-              });
-            }
-            return child;
-          })}
+                return React.cloneElement(child as React.ReactElement<any>, {
+                  row: absoluteRow,
+                  style: {
+                    ...child.props.style,
+                    marginTop: '4px',
+                    marginBottom: '4px',
+                    height: 'calc(var(--timeline-row-height) - 8px)'
+                  }
+                });
+              }
+              return child;
+            })
+          )}
         </>
       )}
     </TimelineRowContext.Provider>

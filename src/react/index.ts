@@ -6,8 +6,18 @@ export * from './types';
 export * from './headless';
 export * from './hooks';
 
-// Export utility function for zoom configuration
+// Export utility functions for zoom configuration
 export { timeSpanToZoom } from '../utils/dateUtils';
+
+// Export aggregation utilities
+export type { TimelineItemData as AggregationItemData, AggregatedPeriod as AggregatedPeriodData } from '../utils/aggregationUtils';
+export {
+  aggregateItemsByPeriod,
+  getGranularity,
+  shouldUseAggregatedView,
+  generatePeriods,
+  calculateAvailableTime
+} from '../utils/aggregationUtils';
 
 // Export locales and locale types
 export type { CalendarLocale } from '../utils/locales';
