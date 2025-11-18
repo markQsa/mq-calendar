@@ -26,6 +26,14 @@ A flexible, headless timeline/calendar component for React with smooth scrolling
 npm install mq-timeline-calendar
 ```
 
+## Live Demo
+
+Try out the timeline calendar in CodeSandbox:
+
+[![Edit on CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/github/markQsa/mq-calendar-demo/main)
+
+[Open Demo →](https://codesandbox.io/p/github/markQsa/mq-calendar-demo/main)
+
 ## Quick Start
 
 ```tsx
@@ -717,4 +725,5 @@ MIT © [Your Name]
 
 - [GitHub Repository](https://github.com/markQsa/mq-calendar)
 - [NPM Package](https://www.npmjs.com/package/mq-timeline-calendar)
+- [Live Demo (CodeSandbox)](https://codesandbox.io/p/github/markQsa/mq-calendar-demo/main)
 - [Issue Tracker](https://github.com/markQsa/mq-calendar/issues)
