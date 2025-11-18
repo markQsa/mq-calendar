@@ -44,7 +44,8 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
       style={{
         position: 'relative',
         flex: '1 1 auto',
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'auto',
         background: 'var(--timeline-bg)',
         fontFamily: 'var(--timeline-content-font)',
         minHeight: `${minHeight}px`,
