@@ -217,6 +217,145 @@ function App() {
 </TimelineCalendar>
 ```
 
+### 8. Pinpoint Markers with Clustering
+
+Display point-in-time markers (milestones, events, deadlines) with automatic clustering:
+
+```tsx
+import { TimelinePinpoint, TimelinePinpointGroup } from '@mq/timeline-calendar/react';
+
+function App() {
+  return (
+    <TimelineCalendar
+      startDate={new Date('2025-01-01')}
+      endDate={new Date('2025-12-31')}
+    >
+      <TimelineRow id="events" label="Events" rowCount={1}>
+        <TimelinePinpointGroup row={0} clusterDistance={30}>
+          {/* Individual pinpoints - will cluster when too close */}
+          <TimelinePinpoint
+            time="2025-03-10T10:00:00"
+            color="#10b981"
+            data={{ type: 'inspection', name: 'Safety Check' }}
+          >
+            ✓
+          </TimelinePinpoint>
+
+          <TimelinePinpoint
+            time="2025-03-10T14:00:00"
+            color="#3b82f6"
+            data={{ type: 'meeting', name: 'Team Sync' }}
+          >
+            👥
+          </TimelinePinpoint>
+
+          <TimelinePinpoint
+            time="2025-03-15T09:00:00"
+            color="#ef4444"
+            data={{ type: 'deadline', name: 'Project Deadline' }}
+          >
+            !
+          </TimelinePinpoint>
+        </TimelinePinpointGroup>
+      </TimelineRow>
+    </TimelineCalendar>
+  );
+}
+```
+
+#### Pinpoint Customization
+
+```tsx
+{/* Different sizes */}
+<TimelinePinpoint
+  time="2025-03-01T10:00:00"
+  size={32}              // Circle size in pixels (default: 24)
+  color="#10b981"
+>
+  ✓
+</TimelinePinpoint>
+
+{/* Different alignments */}
+<TimelinePinpoint
+  time="2025-03-05T10:00:00"
+  alignment="top"        // 'top' (default), 'center', or 'bottom'
+  color="#3b82f6"
+>
+  📍
+</TimelinePinpoint>
+
+<TimelinePinpoint
+  time="2025-03-10T10:00:00"
+  alignment="center"     // Center alignment hides the line
+  color="#f59e0b"
+>
+  ◆
+</TimelinePinpoint>
+
+{/* Custom line styles */}
+<TimelinePinpoint
+  time="2025-03-15T10:00:00"
+  lineStyle="dashed"     // 'solid' (default), 'dashed', or 'dotted'
+  lineWidth={3}          // Line width in pixels (default: 2)
+  lineLength={50}        // Line length in pixels (default: half row height)
+  color="#ef4444"
+>
+  !
+</TimelinePinpoint>
+
+{/* Click handler with custom data */}
+<TimelinePinpoint
+  time="2025-03-20T10:00:00"
+  color="#8b5cf6"
+  data={{ id: 123, type: 'event', name: 'Custom Event' }}
+  onClick={(timestamp, data) => {
+    console.log('Clicked:', new Date(timestamp), data);
+  }}
+>
+  📅
+</TimelinePinpoint>
+```
+
+#### Clustering Behavior
+
+- Pinpoints within `clusterDistance` pixels (default: 30px) are automatically grouped
+- Cluster markers show the count of pinpoints
+- Clicking a cluster smoothly zooms in to separate the pinpoints
+- Custom cluster click handler:
+
+```tsx
+<TimelinePinpointGroup
+  row={0}
+  clusterDistance={30}
+  clusterColor="#ef4444"  // Custom color for cluster markers
+  onClusterClick={(timestamp, items) => {
+    console.log('Cluster clicked:', new Date(timestamp));
+    console.log('Items in cluster:', items);
+    // Custom behavior instead of default zoom
+  }}
+>
+  {/* Pinpoints */}
+</TimelinePinpointGroup>
+```
+
+#### Pinpoint Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `time` | `TimeValue` | required | Time of the pinpoint (Date, timestamp, or ISO string) |
+| `row` | `number` | 0 | Row/lane for vertical positioning |
+| `size` | `number` | 24 | Circle marker size in pixels |
+| `color` | `string` | theme color | Color of the marker and line |
+| `alignment` | `'top' \| 'center' \| 'bottom'` | 'top' | Vertical position; 'center' hides the line |
+| `lineWidth` | `number` | 2 | Width of the vertical line in pixels |
+| `lineLength` | `number` | half row height | Length of the vertical line in pixels |
+| `lineStyle` | `'solid' \| 'dashed' \| 'dotted'` | 'solid' | Style of the vertical line |
+| `children` | `ReactNode` | - | Icon/emoji to display in the marker |
+| `data` | `any` | - | Custom data associated with the pinpoint |
+| `onClick` | `(timestamp: number, data?: any) => void` | - | Click handler |
+| `className` | `string` | - | Custom CSS class |
+| `style` | `CSSProperties` | - | Custom inline styles |
+
 ## Framework-Agnostic Core
 
 Use the core engine without React:

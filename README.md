@@ -12,6 +12,7 @@ A flexible, headless timeline/calendar component for React with smooth scrolling
 - 🔍 **Continuous zoom** - Smooth, cursor-relative zoom (Ctrl/Cmd + wheel)
 - 🎨 **Built-in themes** - Light and dark themes included
 - 🖱️ **Drag & Drop** - Move items horizontally (time) and vertically (rows)
+- 📍 **Pinpoint markers** - Display events and milestones with automatic clustering
 - 📊 **Row grouping** - Organize timeline items with collapsible row groups
 - 🌍 **Localization** - Support for 13+ European languages
 - ⏰ **Availability overlay** - Show working hours and available time periods
@@ -331,6 +332,123 @@ Show available and unavailable time periods:
 >
 ```
 
+## Pinpoint Markers
+
+Display point-in-time markers (milestones, events, deadlines) with automatic clustering when markers are too close together.
+
+### Basic Usage
+
+```tsx
+import { TimelinePinpoint, TimelinePinpointGroup, TimelineRow } from 'mq-timeline-calendar/react';
+
+<TimelineCalendar
+  startDate={new Date('2025-01-01')}
+  endDate={new Date('2025-12-31')}
+>
+  <TimelineRow id="events" label="Events & Milestones" rowCount={1}>
+    <TimelinePinpointGroup row={0} clusterDistance={30}>
+      {/* Individual pinpoints - automatically cluster when too close */}
+      <TimelinePinpoint
+        time="2025-03-10T10:00:00"
+        color="#10b981"
+        data={{ type: 'inspection', name: 'Safety Check' }}
+      >
+        ✓
+      </TimelinePinpoint>
+
+      <TimelinePinpoint
+        time="2025-03-10T14:00:00"
+        color="#3b82f6"
+        data={{ type: 'meeting', name: 'Team Sync' }}
+      >
+        👥
+      </TimelinePinpoint>
+
+      <TimelinePinpoint
+        time="2025-03-15T09:00:00"
+        color="#ef4444"
+        data={{ type: 'deadline' }}
+        onClick={(timestamp, data) => {
+          console.log('Clicked:', new Date(timestamp), data);
+        }}
+      >
+        !
+      </TimelinePinpoint>
+    </TimelinePinpointGroup>
+  </TimelineRow>
+</TimelineCalendar>
+```
+
+### Customization
+
+```tsx
+{/* Different sizes */}
+<TimelinePinpoint
+  time="2025-03-01T10:00:00"
+  size={32}              // Circle size in pixels (default: 24)
+  color="#10b981"
+>
+  ✓
+</TimelinePinpoint>
+
+{/* Different alignments */}
+<TimelinePinpoint
+  time="2025-03-05T10:00:00"
+  alignment="top"        // 'top' (default), 'center', or 'bottom'
+>
+  📍
+</TimelinePinpoint>
+
+<TimelinePinpoint
+  time="2025-03-10T10:00:00"
+  alignment="center"     // Center alignment hides the vertical line
+>
+  ◆
+</TimelinePinpoint>
+
+{/* Custom line styles */}
+<TimelinePinpoint
+  time="2025-03-15T10:00:00"
+  lineStyle="dashed"     // 'solid', 'dashed', or 'dotted'
+  lineWidth={3}          // Line width in pixels (default: 2)
+  lineLength={50}        // Line length in pixels (default: half row height)
+>
+  !
+</TimelinePinpoint>
+```
+
+### TimelinePinpoint Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `time` | `TimeValue` | required | Time of the pinpoint (Date, timestamp, or ISO string) |
+| `row` | `number` | 0 | Row/lane for vertical positioning |
+| `size` | `number` | 24 | Circle marker size in pixels |
+| `color` | `string` | theme color | Color of marker and line |
+| `alignment` | `'top' \| 'center' \| 'bottom'` | `'top'` | Vertical position; 'center' hides line |
+| `lineWidth` | `number` | 2 | Width of vertical line in pixels |
+| `lineLength` | `number` | half row height | Length of vertical line in pixels |
+| `lineStyle` | `'solid' \| 'dashed' \| 'dotted'` | `'solid'` | Style of vertical line |
+| `children` | `ReactNode` | - | Icon/emoji to display in marker |
+| `data` | `any` | - | Custom data to associate with pinpoint |
+| `onClick` | `(timestamp, data?) => void` | - | Click handler |
+
+### TimelinePinpointGroup Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `row` | `number` | 0 | Row/lane for vertical positioning |
+| `clusterDistance` | `number` | 30 | Pixel distance threshold for clustering |
+| `clusterColor` | `string` | theme color | Color for cluster markers |
+| `onClusterClick` | `(timestamp, items) => void` | - | Custom cluster click handler (default: zoom in) |
+
+### Clustering Behavior
+
+- Pinpoints within `clusterDistance` pixels are automatically grouped into clusters
+- Cluster markers display the count of pinpoints
+- Clicking a cluster smoothly zooms in to separate the pinpoints
+- Custom cluster click handler can override default zoom behavior
+
 ## Timeline Aggregation
 
 When working with large datasets, the timeline can automatically aggregate items into grouped periods for better performance and visualization.
@@ -481,6 +599,9 @@ import type {
   TimelineCalendarProps,
   TimelineItemProps,
   TimelineRowProps,
+  TimelinePinpointProps,
+  TimelinePinpointGroupProps,
+  PinpointAlignment,
   TimeValue,
   DurationValue,
   CalendarLocale,
