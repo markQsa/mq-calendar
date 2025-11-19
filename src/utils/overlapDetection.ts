@@ -121,7 +121,7 @@ export function assignSubRows(items: TimeRangeItem[]): Map<string | number, SubR
 
   // Update all assignments with the final sub-row count
   const totalSubRows = subRowEndTimes.length;
-  for (const [id, assignment] of assignments.entries()) {
+  for (const [, assignment] of assignments.entries()) {
     assignment.subRowCount = totalSubRows;
   }
 
