@@ -17,6 +17,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   startTime,
   duration,
   endTime,
+  align = 'left',
   row = 0,
   subRow,
   subRowCount,
@@ -56,8 +57,8 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   };
 
   // Calculate position, width, and visibility
-  const { left, width, isVisible } = useMemo(() => {
-    if (!engine) return { left: 0, width: 0, isVisible: false };
+  const { left, width, isVisible, isAutoWidth } = useMemo(() => {
+    if (!engine) return { left: 0, width: 0, isVisible: false, isAutoWidth: false };
 
     // Use dragged timestamp while dragging, otherwise use the prop
     const effectiveTimestamp = isDragging && draggedTimestamp !== null
@@ -66,30 +67,40 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
 
     const startTimestamp = effectiveTimestamp;
 
-    // Calculate duration
-    let durationMs: number;
+    // Calculate duration (if provided)
+    let durationMs: number | null = null;
+    let itemEndTimestamp: number;
+
     if (endTime) {
       // If endTime is provided, calculate duration from start to end
       const endTimestamp = timeConverter.toTimestamp(endTime);
       durationMs = endTimestamp - startTimestamp;
-    } else {
+      itemEndTimestamp = endTimestamp;
+    } else if (duration !== undefined) {
       // Parse duration (supports both numbers and human-readable strings)
       durationMs = timeConverter.parseDuration?.(duration) ?? (typeof duration === 'number' ? duration : 0);
+      itemEndTimestamp = startTimestamp + durationMs;
+    } else {
+      // No duration or endTime - auto-width item (positioned at a point in time)
+      // For visibility check, consider the item as a point
+      itemEndTimestamp = startTimestamp;
     }
-
-    const itemEndTimestamp = startTimestamp + durationMs;
 
     // Check if item intersects with viewport
     const viewport = engine.getViewportState();
     const isVisible = itemEndTimestamp >= viewport.start && startTimestamp <= viewport.end;
 
     const position = engine.timeToPixel(startTimestamp);
-    const itemWidth = engine.durationToPixels(durationMs);
+
+    // If no duration, width is controlled by content/CSS
+    const isAutoWidth = durationMs === null;
+    const itemWidth = isAutoWidth ? 0 : engine.durationToPixels(durationMs!);
 
     return {
       left: position,
       width: itemWidth,
-      isVisible
+      isVisible,
+      isAutoWidth
     };
   }, [engine, timeConverter, startTime, duration, endTime, refreshCounter, isDragging, draggedTimestamp]);
 
@@ -124,6 +135,21 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
     // Default height with margins
     return 'calc(var(--timeline-row-height) - 8px)';
   }, [subRowCount]);
+
+  // Calculate transform based on alignment
+  const alignTransform = useMemo(() => {
+    if (isAutoWidth) {
+      switch (align) {
+        case 'center':
+          return 'translateX(-50%)';
+        case 'right':
+          return 'translateX(-100%)';
+        default: // 'left'
+          return 'translateX(0)';
+      }
+    }
+    return undefined;
+  }, [align, isAutoWidth]);
 
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -295,7 +321,8 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
           position: 'absolute',
           left,
           top,
-          width,
+          width: isAutoWidth ? 'auto' : width,
+          transform: alignTransform,
           zIndex: isDragging ? 1000 : 10,
           pointerEvents: 'auto',
           cursor: draggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
@@ -306,16 +333,17 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
         }}
         data-timeline-item
         data-row={row}
-        data-width={width}
+        data-width={isAutoWidth ? 'auto' : width}
         onMouseDown={handleMouseDown}
       >
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
           // Clone child and add inline style to remove padding when width <= 20
+          // Only apply for non-auto-width items
           return React.cloneElement(child as React.ReactElement<any>, {
             style: {
               ...child.props.style,
-              ...(width <= 20 && { paddingLeft: 0, paddingRight: 0 })
+              ...(!isAutoWidth && width <= 20 && { paddingLeft: 0, paddingRight: 0 })
             }
           });
         }

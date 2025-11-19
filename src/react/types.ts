@@ -204,15 +204,31 @@ export interface TimelineCalendarProps {
 }
 
 /**
+ * Horizontal alignment for timeline items relative to their start time
+ */
+export type TimelineItemAlign = 'left' | 'center' | 'right';
+
+/**
  * Props for TimelineItem component
  */
 export interface TimelineItemProps {
   /** Start time of the item - accepts Date, timestamp, or ISO string */
   startTime: TimeValue;
-  /** Duration - can be milliseconds or human-readable (e.g., "1 day", "2 hours") */
-  duration: DurationValue;
+  /**
+   * Duration - can be milliseconds or human-readable (e.g., "1 day", "2 hours")
+   * Optional: If not provided, item width is controlled by content/CSS
+   */
+  duration?: DurationValue;
   /** Alternative to duration: specify end time directly */
   endTime?: TimeValue;
+  /**
+   * Horizontal alignment relative to start time (default: 'left')
+   * - 'left': Item starts at the start time
+   * - 'center': Item is centered on the start time
+   * - 'right': Item ends at the start time
+   * Only applies when duration/endTime is not provided
+   */
+  align?: TimelineItemAlign;
   /** Row/lane for vertical positioning */
   row?: number;
   /**
@@ -391,4 +407,63 @@ export interface AggregationConfig {
   granularity?: AggregationGranularity;
   /** Minimum number of items to trigger aggregation (default: 50) */
   minItemsForAggregation?: number;
+}
+
+/**
+ * Vertical alignment for pinpoint markers
+ */
+export type PinpointAlignment = 'top' | 'center' | 'bottom';
+
+/**
+ * Props for TimelinePinpoint component
+ */
+export interface TimelinePinpointProps {
+  /** Unique identifier for this pinpoint */
+  id?: string | number;
+  /** Time of the pinpoint - accepts Date, timestamp, or ISO string */
+  time: TimeValue;
+  /** Row/lane for vertical positioning */
+  row?: number;
+  /** Color of the pinpoint marker (default: theme color) */
+  color?: string;
+  /** Size of the pinpoint circle in pixels (default: 24) */
+  size?: number;
+  /** Line width in pixels (default: 2) */
+  lineWidth?: number;
+  /** Line length in pixels (default: half of row height) */
+  lineLength?: number;
+  /** Line style (default: 'solid') */
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
+  /** Vertical alignment of the pinpoint (default: 'top'). When 'center', no line is shown. */
+  alignment?: PinpointAlignment;
+  /** Custom class name */
+  className?: string;
+  /** Custom inline style */
+  style?: CSSProperties;
+  /** Custom content to render in the pinpoint (instead of default circle) */
+  children?: ReactNode;
+  /** Optional data to associate with this pinpoint */
+  data?: any;
+  /** Callback when pinpoint is clicked */
+  onClick?: (timestamp: number, data?: any) => void;
+}
+
+/**
+ * Props for TimelinePinpointGroup component (handles clustering)
+ */
+export interface TimelinePinpointGroupProps {
+  /** Row/lane for vertical positioning */
+  row?: number;
+  /** Pixel distance threshold for clustering (default: 30) */
+  clusterDistance?: number;
+  /** Color for clustered markers (default: theme color) */
+  clusterColor?: string;
+  /** Callback when a cluster is clicked (zooms in by default) */
+  onClusterClick?: (timestamp: number, items: any[]) => void;
+  /** Custom class name for the group container */
+  className?: string;
+  /** Custom inline style for the group container */
+  style?: CSSProperties;
+  /** Children (TimelinePinpoint components) */
+  children?: ReactNode;
 }

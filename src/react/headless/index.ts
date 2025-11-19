@@ -19,3 +19,4 @@ export {
   useTimelineRowContext,
   useTimelineRowGroup
 } from './TimelineRow';
+export { TimelinePinpoint, TimelinePinpointGroup } from './TimelinePinpoint';
