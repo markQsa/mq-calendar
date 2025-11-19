@@ -458,6 +458,14 @@ export interface TimelinePinpointGroupProps {
   clusterDistance?: number;
   /** Color for clustered markers (default: theme color) */
   clusterColor?: string;
+  /** Size of cluster circle marker in pixels (default: 24) */
+  clusterSize?: number;
+  /** Default size for individual pinpoint markers in pixels (default: 24) */
+  pinpointSize?: number;
+  /** Default line width for pinpoints in pixels (default: 2) */
+  pinpointLineWidth?: number;
+  /** Default line length for pinpoints in pixels (default: half row height) */
+  pinpointLineLength?: number;
   /** Callback when a cluster is clicked (zooms in by default) */
   onClusterClick?: (timestamp: number, items: any[]) => void;
   /** Custom class name for the group container */

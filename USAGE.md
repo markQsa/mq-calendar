@@ -356,6 +356,56 @@ function App() {
 | `className` | `string` | - | Custom CSS class |
 | `style` | `CSSProperties` | - | Custom inline styles |
 
+#### TimelinePinpointGroup Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `row` | `number` | 0 | Row/lane for vertical positioning |
+| `clusterDistance` | `number` | 30 | Pixel distance threshold for clustering |
+| `clusterColor` | `string` | theme color | Color for cluster markers |
+| `clusterSize` | `number` | 24 | Size of cluster circle marker in pixels |
+| `pinpointSize` | `number` | 24 | Default size for individual pinpoint markers |
+| `pinpointLineWidth` | `number` | 2 | Default line width for pinpoints |
+| `pinpointLineLength` | `number` | half row height | Default line length for pinpoints |
+| `onClusterClick` | `(timestamp, items) => void` | - | Custom cluster click handler |
+
+#### Group-Level Defaults
+
+You can set default properties at the group level that apply to all pinpoints:
+
+```tsx
+{/* All pinpoints inherit size and line properties from the group */}
+<TimelinePinpointGroup
+  row={0}
+  clusterDistance={30}
+  clusterSize={32}           // Larger cluster markers
+  clusterColor="#ec4899"
+  pinpointSize={16}          // All pinpoints default to 16px
+  pinpointLineWidth={3}      // Thicker lines for all
+  pinpointLineLength={25}    // Shorter lines
+>
+  <TimelinePinpoint time="2025-03-01T10:00:00" color="#10b981">✓</TimelinePinpoint>
+  <TimelinePinpoint time="2025-03-01T11:00:00" color="#3b82f6">👥</TimelinePinpoint>
+  <TimelinePinpoint time="2025-03-01T12:00:00" color="#f59e0b">🔧</TimelinePinpoint>
+  {/* All inherit: size=16, lineWidth=3, lineLength=25 */}
+</TimelinePinpointGroup>
+
+{/* Individual pinpoints can override group defaults */}
+<TimelinePinpointGroup
+  row={1}
+  pinpointSize={24}          // Default size for this group
+  pinpointLineWidth={2}
+>
+  <TimelinePinpoint time="2025-04-01T10:00:00" size={16}>
+    ✓
+  </TimelinePinpoint>  {/* Overrides size to 16px */}
+
+  <TimelinePinpoint time="2025-04-05T10:00:00">
+    👥
+  </TimelinePinpoint>  {/* Uses group default size=24px */}
+</TimelinePinpointGroup>
+```
+
 ## Framework-Agnostic Core
 
 Use the core engine without React:

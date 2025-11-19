@@ -212,32 +212,57 @@ function App() {
             <TimelineRow
               id="pinpoints-custom"
               label="Pinpoint Customization (Size, Alignment, Line Styles)"
-              rowCount={1}
+              rowCount={2}
               collapsible={true}
               defaultExpanded={true}
             >
-              {/* Row 0: Different sizes */}
-              <TimelinePinpointGroup row={0} clusterDistance={30}>
+              {/* Row 0: Group-level defaults - all pinpoints inherit size and line props */}
+              <TimelinePinpointGroup
+                row={0}
+                clusterDistance={30}
+                clusterSize={32}
+                clusterColor="#ec4899"
+                pinpointSize={16}
+                pinpointLineWidth={3}
+                pinpointLineLength={25}
+              >
+                <TimelinePinpoint time="2025-03-01T10:00:00" color="#10b981">
+                  ✓
+                </TimelinePinpoint>
+                <TimelinePinpoint time="2025-03-01T11:00:00" color="#3b82f6">
+                  👥
+                </TimelinePinpoint>
+                <TimelinePinpoint time="2025-03-01T12:00:00" color="#f59e0b">
+                  🔧
+                </TimelinePinpoint>
+                <TimelinePinpoint time="2025-03-01T13:00:00" color="#ef4444">
+                  !
+                </TimelinePinpoint>
+                <TimelinePinpoint time="2025-03-05T10:00:00" color="#8b5cf6">
+                  📚
+                </TimelinePinpoint>
+              </TimelinePinpointGroup>
+
+              {/* Row 1: Individual overrides - specific pinpoints override group defaults */}
+              <TimelinePinpointGroup
+                row={1}
+                clusterDistance={30}
+                pinpointSize={24}
+                pinpointLineWidth={2}
+              >
                 <TimelinePinpoint
-                  time="2025-03-01T10:00:00"
-                  row={0}
+                  time="2025-04-01T10:00:00"
                   color="#10b981"
                   size={16}
                 >
                   ✓
                 </TimelinePinpoint>
-                <TimelinePinpoint
-                  time="2025-03-05T10:00:00"
-                  row={0}
-                  color="#3b82f6"
-                  size={24}
-                >
+                <TimelinePinpoint time="2025-04-05T10:00:00" color="#3b82f6">
                   👥
                 </TimelinePinpoint>
                 <TimelinePinpoint
                   alignment="bottom"
-                  time="2025-03-10T10:00:00"
-                  row={0}
+                  time="2025-04-10T10:00:00"
                   lineLength={15}
                   color="#f59e0b"
                   size={32}

@@ -159,8 +159,10 @@ const ClusterMarker: React.FC<{
   cluster: PinpointCluster;
   absoluteRow: number;
   color?: string;
+  size?: number;
+  lineWidth?: number;
   onClick?: () => void;
-}> = ({ cluster, absoluteRow, color, onClick }) => {
+}> = ({ cluster, absoluteRow, color, size = 24, lineWidth = 2, onClick }) => {
   const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
     .getPropertyValue('--timeline-row-height') || '60');
 
@@ -187,10 +189,10 @@ const ClusterMarker: React.FC<{
       <div
         style={{
           position: 'absolute',
-          left: -1,
-          top: 24,
-          width: 2,
-          height: (rowHeightPx / 2) - 24,
+          left: -(lineWidth / 2),
+          top: size,
+          width: lineWidth,
+          height: (rowHeightPx / 2) - size,
           backgroundColor: clusterColor,
           opacity: 0.6
         }}
@@ -199,8 +201,8 @@ const ClusterMarker: React.FC<{
       {/* Cluster marker with count */}
       <div
         style={{
-          width: 24,
-          height: 24,
+          width: size,
+          height: size,
           borderRadius: '50%',
           backgroundColor: clusterColor,
           border: '2px solid white',
@@ -209,7 +211,7 @@ const ClusterMarker: React.FC<{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '11px',
+          fontSize: `${size * 0.46}px`,
           fontWeight: 'bold',
           color: 'white'
         }}
@@ -227,6 +229,10 @@ export const TimelinePinpointGroup: React.FC<TimelinePinpointGroupProps> = ({
   row = 0,
   clusterDistance = 30,
   clusterColor,
+  clusterSize = 24,
+  pinpointSize,
+  pinpointLineWidth,
+  pinpointLineLength,
   onClusterClick,
   children
 }) => {
@@ -304,20 +310,39 @@ export const TimelinePinpointGroup: React.FC<TimelinePinpointGroupProps> = ({
               cluster={cluster}
               absoluteRow={absoluteRow}
               color={clusterColor}
+              size={clusterSize}
+              lineWidth={pinpointLineWidth}
               onClick={() => handleClusterClick(cluster)}
             />
           );
         } else {
-          // Render single pinpoint - pass absolute row
+          // Render single pinpoint - pass absolute row and default props
           const item = cluster.items[0];
           const child = item.data?.child;
 
           if (!React.isValidElement(child)) return null;
 
-          return React.cloneElement(child as React.ReactElement<any>, {
+          // Cast child.props to access properties safely
+          const childProps = child.props as TimelinePinpointProps;
+
+          // Merge group defaults with individual pinpoint props
+          const mergedProps: any = {
             key: cluster.id,
-            row: absoluteRow // Use absolute row position
-          });
+            row: absoluteRow, // Use absolute row position
+          };
+
+          // Apply group defaults only if not explicitly set on the pinpoint
+          if (pinpointSize !== undefined && childProps.size === undefined) {
+            mergedProps.size = pinpointSize;
+          }
+          if (pinpointLineWidth !== undefined && childProps.lineWidth === undefined) {
+            mergedProps.lineWidth = pinpointLineWidth;
+          }
+          if (pinpointLineLength !== undefined && childProps.lineLength === undefined) {
+            mergedProps.lineLength = pinpointLineLength;
+          }
+
+          return React.cloneElement(child as React.ReactElement<TimelinePinpointProps>, mergedProps);
         }
       })}
     </>
