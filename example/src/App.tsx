@@ -185,6 +185,111 @@ function App() {
               </TimelineItem>
             </TimelineRow>
 
+            {/* Overlapping Items Demo Row */}
+            <TimelineRow id="overlap-demo" label="Overlapping Items Demo" rowCount={3} collapsible={true} defaultExpanded={true}>
+              {/* Row 0: Two overlapping items */}
+              <TimelineItem
+                key="overlap-1-1"
+                startTime="2025-04-01"
+                duration="10 days"
+                row={0}
+              >
+                <div className="timeline-item blue">
+                  Task A (10 days)
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                key="overlap-1-2"
+                startTime="2025-04-05"
+                duration="8 days"
+                row={0}
+              >
+                <div className="timeline-item green">
+                  Task B (8 days)
+                </div>
+              </TimelineItem>
+
+              {/* Row 1: Three overlapping items */}
+              <TimelineItem
+                key="overlap-2-1"
+                startTime="2025-04-15"
+                duration="12 days"
+                row={1}
+              >
+                <div className="timeline-item orange">
+                  Project X
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                key="overlap-2-2"
+                startTime="2025-04-18"
+                duration="10 days"
+                row={1}
+              >
+                <div className="timeline-item purple">
+                  Project Y
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                key="overlap-2-3"
+                startTime="2025-04-22"
+                duration="8 days"
+                row={1}
+              >
+                <div className="timeline-item cyan">
+                  Project Z
+                </div>
+              </TimelineItem>
+
+              {/* Row 2: Four overlapping items (like the screenshot) */}
+              <TimelineItem
+                key="overlap-3-1"
+                startTime="2025-05-01"
+                duration="5 days"
+                row={2}
+              >
+                <div className="timeline-item" style={{ backgroundColor: '#059669', color: 'white' }}>
+                  Fire Alarm System Test
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                key="overlap-3-2"
+                startTime="2025-05-02"
+                duration="4 days"
+                row={2}
+              >
+                <div className="timeline-item" style={{ backgroundColor: '#2563eb', color: 'white' }}>
+                  Industrial Motor Wiring
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                key="overlap-3-3"
+                startTime="2025-05-03"
+                duration="3 days"
+                row={2}
+              >
+                <div className="timeline-item" style={{ backgroundColor: '#16a34a', color: 'white' }}>
+                  Medical Clinic Installation
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                key="overlap-3-4"
+                startTime="2025-05-04"
+                duration="2 days"
+                row={2}
+              >
+                <div className="timeline-item" style={{ backgroundColor: '#ea580c', color: 'white' }}>
+                  Train Station Maintenance
+                </div>
+              </TimelineItem>
+            </TimelineRow>
+
           </TimelineRowGroup>
         </TimelineCalendar>
       </div>

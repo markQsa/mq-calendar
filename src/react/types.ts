@@ -215,6 +215,18 @@ export interface TimelineItemProps {
   endTime?: TimeValue;
   /** Row/lane for vertical positioning */
   row?: number;
+  /**
+   * Sub-row index for overlapping items (0-based).
+   * Automatically set by TimelineRow when items overlap.
+   * @internal - Generally set automatically by TimelineRow
+   */
+  subRow?: number;
+  /**
+   * Total number of sub-rows in this row (for overlapping items).
+   * Automatically set by TimelineRow when items overlap.
+   * @internal - Generally set automatically by TimelineRow
+   */
+  subRowCount?: number;
   /** Enable drag and drop (default: false) */
   draggable?: boolean;
   /** Allow dragging between rows (default: false) */

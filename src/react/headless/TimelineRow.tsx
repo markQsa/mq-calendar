@@ -4,6 +4,7 @@ import type { TimelineItemData } from '../../utils/aggregationUtils';
 import { aggregateItemsByPeriod, getGranularity, shouldUseAggregatedView } from '../../utils/aggregationUtils';
 import { AggregatedView } from './AggregatedView';
 import { useTimelineContext } from './TimelineContext';
+import { detectOverlapsAndAssignSubRows, type TimeRangeItem } from '../../utils/overlapDetection';
 
 interface TimelineRowState {
   id: string;
@@ -338,6 +339,66 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     return aggregateItemsByPeriod(items, viewport.start, viewport.end, granularity, availability);
   }, [useAggregation, engine, timeConverter, children, aggregation, refreshCounter]);
 
+  // Calculate sub-row assignments for overlapping items
+  const subRowAssignments = useMemo(() => {
+    if (!timeConverter || !engine) {
+      return new Map();
+    }
+
+    // Group items by their row prop
+    const itemsByRow = new Map<number, Array<{ child: React.ReactElement; timeRangeItem: TimeRangeItem }>>();
+
+    React.Children.forEach(children, (child, index) => {
+      if (React.isValidElement(child) && child.props.startTime) {
+        const itemRow = typeof child.props.row === 'number' ? child.props.row : 0;
+
+        // Calculate time range
+        const startTime = timeConverter.toTimestamp(child.props.startTime);
+        let duration = 0;
+
+        if (child.props.endTime) {
+          duration = timeConverter.toTimestamp(child.props.endTime) - startTime;
+        } else if (child.props.duration && timeConverter.parseDuration) {
+          duration = timeConverter.parseDuration(child.props.duration);
+        }
+
+        const endTime = startTime + duration;
+
+        // Create a unique ID for this item (using index as fallback)
+        const itemId = child.key || `item-${index}`;
+
+        const timeRangeItem: TimeRangeItem = {
+          id: itemId,
+          startTime,
+          endTime
+        };
+
+        if (!itemsByRow.has(itemRow)) {
+          itemsByRow.set(itemRow, []);
+        }
+        itemsByRow.get(itemRow)!.push({ child, timeRangeItem });
+      }
+    });
+
+    // Detect overlaps for each row
+    const assignments = new Map<string | number, { subRow: number; subRowCount: number }>();
+
+    for (const [, items] of itemsByRow) {
+      const timeRangeItems = items.map(item => item.timeRangeItem);
+      const rowAssignments = detectOverlapsAndAssignSubRows(timeRangeItems);
+
+      // Merge into main assignments map
+      for (const [id, assignment] of rowAssignments) {
+        assignments.set(id, {
+          subRow: assignment.subRow,
+          subRowCount: assignment.subRowCount
+        });
+      }
+    }
+
+    return assignments;
+  }, [children, timeConverter, engine, refreshCounter]);
+
   const contextValue = useMemo(
     () => ({
       id: rowId,
@@ -450,18 +511,28 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             />
           ) : (
             /* Children - offset their row prop by startRow and account for header */
-            React.Children.map(children, (child) => {
+            React.Children.map(children, (child, index) => {
               if (React.isValidElement(child) && typeof child.props.row === 'number') {
                 const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
                 const absoluteRow = calculatedStartRow + headerRows + child.props.row;
 
+                // Get sub-row assignment for this child
+                const itemId = child.key || `item-${index}`;
+                const assignment = subRowAssignments.get(itemId);
+
+                // Only set height if there are no sub-rows or only one sub-row
+                // Otherwise, let TimelineItem calculate the height based on subRowCount
+                const hasSubRows = assignment && assignment.subRowCount > 1;
+
                 return React.cloneElement(child as React.ReactElement<any>, {
                   row: absoluteRow,
+                  subRow: assignment?.subRow,
+                  subRowCount: assignment?.subRowCount,
                   style: {
                     ...child.props.style,
                     marginTop: '4px',
                     marginBottom: '4px',
-                    height: 'calc(var(--timeline-row-height) - 8px)'
+                    ...(hasSubRows ? {} : { height: 'calc(var(--timeline-row-height) - 8px)' })
                   }
                 });
               }

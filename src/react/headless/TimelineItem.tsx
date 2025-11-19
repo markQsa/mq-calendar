@@ -18,6 +18,8 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   duration,
   endTime,
   row = 0,
+  subRow,
+  subRowCount,
   draggable = false,
   allowRowChange = false,
   onDragStart,
@@ -97,8 +99,31 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
 
     // Use dragged row while dragging vertically, otherwise use the prop
     const effectiveRow = isDragging && draggedRow !== null ? draggedRow : row;
-    return effectiveRow * rowHeightPx;
-  }, [row, isDragging, draggedRow]);
+    const baseTop = effectiveRow * rowHeightPx;
+
+    // If item is in a sub-row due to overlapping, adjust position
+    if (subRow !== undefined && subRowCount !== undefined && subRowCount > 1) {
+      const subRowHeight = rowHeightPx / subRowCount;
+      return baseTop + (subRow * subRowHeight);
+    }
+
+    return baseTop;
+  }, [row, subRow, subRowCount, isDragging, draggedRow]);
+
+  const height = useMemo(() => {
+    const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+
+    // Calculate height based on sub-row count
+    if (subRowCount !== undefined && subRowCount > 1) {
+      const subRowHeight = rowHeightPx / subRowCount;
+      // Account for margins (4px top + 4px bottom = 8px total)
+      return `${subRowHeight - 8}px`;
+    }
+
+    // Default height with margins
+    return 'calc(var(--timeline-row-height) - 8px)';
+  }, [subRowCount]);
 
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -276,8 +301,8 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
           cursor: draggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
           opacity: isDragging ? 0.8 : 1,
           ...style,
-          // Allow style.height to override if provided
-          height: style?.height || 'var(--timeline-row-height)'
+          // Allow style.height to override if provided, otherwise use calculated height
+          height: style?.height || height
         }}
         data-timeline-item
         data-row={row}
