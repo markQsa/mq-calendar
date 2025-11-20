@@ -298,14 +298,22 @@ export const TimelinePinpointGroup: React.FC<TimelinePinpointGroupProps> = ({
     const clustered = clusterPinpoints(viewportPinpoints, clusterDistance);
 
     // Restore original pixel positions for rendering
-    return clustered.map(cluster => ({
-      ...cluster,
-      pixelPosition: (cluster.items[0] as ExtendedPinpointItem).originalPixelPosition,
-      items: cluster.items.map(item => ({
-        ...item,
-        pixelPosition: (item as ExtendedPinpointItem).originalPixelPosition
-      }))
-    }));
+    return clustered.map(cluster => {
+      // Calculate average of original pixel positions for cluster center
+      const originalPositions = cluster.items.map(item =>
+        (item as ExtendedPinpointItem).originalPixelPosition
+      );
+      const avgOriginalPosition = originalPositions.reduce((sum, pos) => sum + pos, 0) / originalPositions.length;
+
+      return {
+        ...cluster,
+        pixelPosition: avgOriginalPosition, // Use average position, not first item
+        items: cluster.items.map(item => ({
+          ...item,
+          pixelPosition: (item as ExtendedPinpointItem).originalPixelPosition
+        }))
+      };
+    });
   }, [engine, pinpoints, clusterDistance]);
 
   // Use row directly - TimelineRow has already adjusted it if we're inside one
