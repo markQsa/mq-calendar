@@ -27,9 +27,8 @@ export const CurrentTimeLine: React.FC<CurrentTimeLineProps> = ({
   // Calculate position of current time line
   const position = (currentTime - viewportStart) * pixelsPerMs;
 
-  // Calculate marker position based on line width
-  const markerSize = Math.max(8, lineWidth * 2);
-  const markerOffset = -(markerSize / 2);
+  // Calculate marker size based on line width
+  const markerSize = 12;
 
   return (
     <div
@@ -40,23 +39,26 @@ export const CurrentTimeLine: React.FC<CurrentTimeLineProps> = ({
         bottom: 0,
         width: `${lineWidth}px`,
         background: 'var(--timeline-current-time-line, #ff4444)',
+        transform: 'translateX(-50%)', // Center the line on the position
         zIndex: 100,
         pointerEvents: 'none',
         ...styles.root
       }}
       data-timeline-current-time
     >
-      {/* Optional: Add a small circle or marker at the top */}
+      {/* Circle marker at the top, centered on the line */}
       <div
         style={{
           position: 'absolute',
-          top: '-4px',
-          left: `${markerOffset}px`,
+          top: '0px',
+          left: '50%',
+          transform: 'translateX(-50%)',
           width: `${markerSize}px`,
           height: `${markerSize}px`,
           borderRadius: '50%',
-          background: 'var(--timeline-current-time-line, #ff4444)',
-          border: '2px solid var(--timeline-bg, #ffffff)'
+          background: 'var(--timeline-bg, #ffffff)',
+          border: '2px solid var(--timeline-current-time-line, #ff4444)',
+          boxSizing: 'border-box'
         }}
       />
     </div>
