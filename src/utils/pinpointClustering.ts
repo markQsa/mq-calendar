@@ -60,10 +60,12 @@ export function clusterPinpoints(
 
   for (let i = 1; i < sorted.length; i++) {
     const current = sorted[i];
-    const previous = sorted[i - 1];
+    const clusterFirst = currentCluster[0];
 
-    // Check if current pinpoint is close enough to the previous one
-    if (current.pixelPosition - previous.pixelPosition <= clusterDistance) {
+    // Check if current pinpoint is close enough to the FIRST item in the cluster
+    // This prevents "chaining" where items keep getting added even though the
+    // overall cluster span exceeds the clusterDistance threshold
+    if (current.pixelPosition - clusterFirst.pixelPosition <= clusterDistance) {
       // Add to current cluster
       currentCluster.push(current);
     } else {
