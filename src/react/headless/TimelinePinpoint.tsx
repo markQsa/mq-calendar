@@ -299,15 +299,17 @@ export const TimelinePinpointGroup: React.FC<TimelinePinpointGroupProps> = ({
 
     // Restore original pixel positions for rendering
     return clustered.map(cluster => {
-      // Calculate average of original pixel positions for cluster center
+      // Position cluster at the middle of first and last pinpoint (not average of all)
       const originalPositions = cluster.items.map(item =>
         (item as ExtendedPinpointItem).originalPixelPosition
       );
-      const avgOriginalPosition = originalPositions.reduce((sum, pos) => sum + pos, 0) / originalPositions.length;
+      const firstPosition = originalPositions[0];
+      const lastPosition = originalPositions[originalPositions.length - 1];
+      const middlePosition = (firstPosition + lastPosition) / 2;
 
       return {
         ...cluster,
-        pixelPosition: avgOriginalPosition, // Use average position, not first item
+        pixelPosition: middlePosition, // Middle of first and last pinpoint
         items: cluster.items.map(item => ({
           ...item,
           pixelPosition: (item as ExtendedPinpointItem).originalPixelPosition
