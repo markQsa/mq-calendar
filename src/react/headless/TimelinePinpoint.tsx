@@ -242,33 +242,71 @@ export const TimelinePinpointGroup: React.FC<TimelinePinpointGroupProps> = ({
   const pinpoints = useMemo((): PinpointItem[] => {
     if (!engine) return [];
 
+    const viewport = engine.getViewportState();
     const items: PinpointItem[] = [];
 
     React.Children.forEach(children, (child, index) => {
       if (React.isValidElement(child) && child.props.time) {
         const timestamp = timeConverter.toTimestamp(child.props.time);
-        const pixelPosition = engine.timeToPixel(timestamp);
-        const pinpointId = child.props.id || `pinpoint-${index}`;
 
-        items.push({
-          id: pinpointId,
-          timestamp,
-          pixelPosition,
-          data: {
-            child,
-            originalProps: child.props
-          }
-        });
+        // Only include pinpoints that are visible in the viewport
+        if (timestamp >= viewport.start && timestamp <= viewport.end) {
+          const pixelPosition = engine.timeToPixel(timestamp);
+          const pinpointId = child.props.id || `pinpoint-${index}`;
+
+          items.push({
+            id: pinpointId,
+            timestamp,
+            pixelPosition,
+            data: {
+              child,
+              originalProps: child.props
+            }
+          });
+        }
       }
     });
 
     return items;
   }, [engine, timeConverter, children, refreshCounter]);
 
-  // Cluster the pinpoints
+  // Cluster the pinpoints based on viewport-relative positions
   const clusters = useMemo(() => {
-    return clusterPinpoints(pinpoints, clusterDistance);
-  }, [pinpoints, clusterDistance]);
+    if (!engine || pinpoints.length === 0) return [];
+
+    const viewport = engine.getViewportState();
+    const zoomState = engine.getZoomState();
+    const pixelsPerMs = zoomState.pixelsPerMs;
+
+    // Create pinpoints with viewport-relative positions for clustering check
+    // Store both viewport and original positions
+    type ExtendedPinpointItem = PinpointItem & { originalPixelPosition: number };
+
+    const viewportPinpoints: ExtendedPinpointItem[] = pinpoints.map(p => {
+      // Calculate screen-space position (0 to viewport width)
+      const viewportPixelPosition = (p.timestamp - viewport.start) * pixelsPerMs;
+
+      return {
+        ...p,
+        pixelPosition: viewportPixelPosition,
+        // Store original position for rendering
+        originalPixelPosition: p.pixelPosition
+      };
+    });
+
+    // Cluster based on viewport pixel distance
+    const clustered = clusterPinpoints(viewportPinpoints, clusterDistance);
+
+    // Restore original pixel positions for rendering
+    return clustered.map(cluster => ({
+      ...cluster,
+      pixelPosition: (cluster.items[0] as ExtendedPinpointItem).originalPixelPosition,
+      items: cluster.items.map(item => ({
+        ...item,
+        pixelPosition: (item as ExtendedPinpointItem).originalPixelPosition
+      }))
+    }));
+  }, [engine, pinpoints, clusterDistance]);
 
   // Use row directly - TimelineRow has already adjusted it if we're inside one
   const absoluteRow = row;
