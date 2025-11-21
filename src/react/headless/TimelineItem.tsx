@@ -13,7 +13,7 @@ const snapToInterval = (timestamp: number, intervalMs: number = 15 * 60 * 1000):
 /**
  * Item component for positioning content at specific times
  */
-export const TimelineItem: React.FC<TimelineItemProps> = ({
+const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   startTime,
   duration,
   endTime,
@@ -376,3 +376,9 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
     </>
   );
 };
+
+/**
+ * Memoized TimelineItem to prevent unnecessary re-renders
+ * Only re-renders when props actually change
+ */
+export const TimelineItem = React.memo(TimelineItemComponent);

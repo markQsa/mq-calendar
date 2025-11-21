@@ -13,6 +13,23 @@ export function useWheel(ref: RefObject<HTMLElement>, options: UseWheelOptions):
     const element = ref.current;
     if (!element) return;
 
+    let rafId: number | null = null;
+    let pendingDeltaX = 0;
+    let pendingDeltaY = 0;
+    let pendingZoom: { delta: number; clientX: number; clientY: number } | null = null;
+
+    const processUpdates = () => {
+      if (pendingZoom) {
+        options.onZoom?.(pendingZoom.delta, pendingZoom.clientX, pendingZoom.clientY);
+        pendingZoom = null;
+      } else if (pendingDeltaX !== 0 || pendingDeltaY !== 0) {
+        options.onWheel(pendingDeltaX, pendingDeltaY, null as any);
+        pendingDeltaX = 0;
+        pendingDeltaY = 0;
+      }
+      rafId = null;
+    };
+
     const handleWheel = (event: WheelEvent) => {
       // Check if this is a zoom gesture (Ctrl/Cmd + wheel or pinch)
       if (event.ctrlKey || event.metaKey) {
@@ -27,7 +44,13 @@ export function useWheel(ref: RefObject<HTMLElement>, options: UseWheelOptions):
           const clientX = event.clientX - rect.left;
           const clientY = event.clientY - rect.top;
 
-          options.onZoom(delta, clientX, clientY);
+          // Store zoom request for RAF
+          pendingZoom = { delta, clientX, clientY };
+
+          // Schedule RAF if not already scheduled
+          if (rafId === null) {
+            rafId = requestAnimationFrame(processUpdates);
+          }
         }
       } else {
         // Check if the event happened over the header area
@@ -47,7 +70,14 @@ export function useWheel(ref: RefObject<HTMLElement>, options: UseWheelOptions):
 
           // Use deltaX for horizontal scroll, or deltaY when over header/Shift is pressed
           const scrollDelta = isHorizontalScroll ? event.deltaX : event.deltaY;
-          options.onWheel(scrollDelta, 0, event);
+
+          // Accumulate scroll deltas for RAF
+          pendingDeltaX += scrollDelta;
+
+          // Schedule RAF if not already scheduled
+          if (rafId === null) {
+            rafId = requestAnimationFrame(processUpdates);
+          }
         }
         // Otherwise, allow natural vertical scrolling (don't preventDefault)
         // This enables the content area's native vertical scroll
@@ -57,6 +87,9 @@ export function useWheel(ref: RefObject<HTMLElement>, options: UseWheelOptions):
     element.addEventListener('wheel', handleWheel, { passive: false });
 
     return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
       element.removeEventListener('wheel', handleWheel);
     };
   }, [ref, options]);
