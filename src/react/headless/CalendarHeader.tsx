@@ -29,7 +29,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   const [hoveredCell, setHoveredCell] = useState<{ rowIndex: number; cellIndex: number; part: import('../../core/types').TimeUnit } | null>(null);
 
   // Calculate header row height from CSS variable or default
-  const rowHeight = 40; // Default, will be overridden by CSS variable
+  const rowHeight = 32; // Default, will be overridden by CSS variable
 
   // Calculate max position for viewBox (same as content area)
   const maxPosition = headerCells.length > 0 && headerCells[0].length > 0
@@ -41,12 +41,16 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
       className={classNames.header}
       style={{
         position: 'relative',
+        height: 'var(--timeline-header-height)',
         background: 'var(--timeline-header-bg)',
         borderBottom: '1px solid var(--timeline-header-border)',
         fontFamily: 'var(--timeline-header-font)',
         userSelect: 'none',
         overflow: 'hidden',
         flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
         ...styles.header
       }}
       data-timeline-header

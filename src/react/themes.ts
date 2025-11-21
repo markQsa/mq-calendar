@@ -36,8 +36,8 @@ export const lightTheme: TimelineTheme = {
     content: 'system-ui, -apple-system, sans-serif',
   },
   spacing: {
-    headerHeight: 80,
-    headerRowHeight: 40,
+    headerHeight: 96,
+    headerRowHeight: 32,
     rowHeight: 60,
   }
 };
@@ -78,8 +78,8 @@ export const darkTheme: TimelineTheme = {
     content: 'system-ui, -apple-system, sans-serif',
   },
   spacing: {
-    headerHeight: 80,
-    headerRowHeight: 40,
+    headerHeight: 96,
+    headerRowHeight: 32,
     rowHeight: 60,
   }
 };
