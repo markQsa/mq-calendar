@@ -228,19 +228,25 @@ export class GridCalculator {
       const monthDate = new Date(cell.timestamp);
       const yearLabel = monthDate.getFullYear().toString();
       const yearTimestamp = new Date(monthDate.getFullYear(), 0, 1).getTime(); // Jan 1 of that year
+      const combinedLabel = `${cell.label} ${yearLabel}`;
 
-      // If partially visible, only show the month part (actual time type)
+      // If partially visible, check if combined label still fits in visible portion
       if (cell.isPartiallyVisible) {
-        return {
-          ...cell,
-          label: cell.label,
-          parts: undefined // No combined parts for partial cells
-        };
+        const combinedWidth = this.estimateTextWidth(combinedLabel, cell.isPrimary);
+
+        // Only show combined parts if they fit in the visible width
+        if (combinedWidth > cell.width) {
+          return {
+            ...cell,
+            label: cell.label,
+            parts: undefined // No combined parts if they don't fit
+          };
+        }
       }
 
       return {
         ...cell,
-        label: `${cell.label} ${yearLabel}`,
+        label: combinedLabel,
         parts: [
           {
             label: cell.label, // Month label (e.g., "Jan")
@@ -298,19 +304,25 @@ export class GridCalculator {
       const weekDate = new Date(cell.timestamp);
       const monthLabel = formatTimeUnit(weekDate, 'month', this.config.locale);
       const monthStart = getStartOf(weekDate, 'month');
+      const combinedLabel = `${cell.label} ${monthLabel}`;
 
-      // If partially visible, only show the week part (actual time type)
+      // If partially visible, check if combined label still fits in visible portion
       if (cell.isPartiallyVisible) {
-        return {
-          ...cell,
-          label: cell.label,
-          parts: undefined
-        };
+        const combinedWidth = this.estimateTextWidth(combinedLabel, cell.isPrimary);
+
+        // Only show combined parts if they fit in the visible width
+        if (combinedWidth > cell.width) {
+          return {
+            ...cell,
+            label: cell.label,
+            parts: undefined // No combined parts if they don't fit
+          };
+        }
       }
 
       return {
         ...cell,
-        label: `${cell.label} ${monthLabel}`,
+        label: combinedLabel,
         parts: [
           {
             label: cell.label, // Week label (e.g., "W1")
@@ -339,19 +351,25 @@ export class GridCalculator {
       const yearLabel = weekDate.getFullYear().toString();
       const monthStart = getStartOf(weekDate, 'month');
       const yearStart = new Date(weekDate.getFullYear(), 0, 1);
+      const combinedLabel = `${cell.label} ${monthLabel} ${yearLabel}`;
 
-      // If partially visible, only show the week part (actual time type)
+      // If partially visible, check if combined label still fits in visible portion
       if (cell.isPartiallyVisible) {
-        return {
-          ...cell,
-          label: cell.label,
-          parts: undefined
-        };
+        const combinedWidth = this.estimateTextWidth(combinedLabel, cell.isPrimary);
+
+        // Only show combined parts if they fit in the visible width
+        if (combinedWidth > cell.width) {
+          return {
+            ...cell,
+            label: cell.label,
+            parts: undefined // No combined parts if they don't fit
+          };
+        }
       }
 
       return {
         ...cell,
-        label: `${cell.label} ${monthLabel} ${yearLabel}`,
+        label: combinedLabel,
         parts: [
           {
             label: cell.label, // Week label (e.g., "W1")
