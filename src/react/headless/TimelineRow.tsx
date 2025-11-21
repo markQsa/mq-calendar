@@ -215,6 +215,8 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   aggregation,
   renderAggregatedPeriod,
   getAggregatedTypeStyle,
+  items,
+  renderItem,
   children
 }) => {
   const groupContext = useTimelineRowGroup();
@@ -294,12 +296,12 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     const threshold = aggregation.threshold || '6 months';
     const thresholdMs = timeConverter.parseDuration ? timeConverter.parseDuration(threshold) : 0;
 
-    // Count items
-    const itemCount = React.Children.count(children);
+    // Count items (prefer items prop over children)
+    const itemCount = items && items.length > 0 ? items.length : React.Children.count(children);
     const minItems = aggregation.minItemsForAggregation ?? 50;
 
     return shouldUseAggregatedView(viewportDuration, thresholdMs, itemCount, minItems);
-  }, [engine, timeConverter, aggregation, children, refreshCounter]);
+  }, [engine, timeConverter, aggregation, children, items, refreshCounter]);
 
   // Extract and aggregate items if needed
   const aggregatedPeriods = useMemo(() => {
@@ -308,26 +310,46 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     }
 
     const viewport = engine.getViewportState();
-    const items: TimelineItemData[] = [];
+    const itemsData: TimelineItemData[] = [];
 
-    // Extract item data from children
-    React.Children.forEach(children, (child) => {
-      if (React.isValidElement(child) && child.props.startTime) {
-        const startTime = timeConverter.toTimestamp(child.props.startTime);
-        const duration = child.props.duration && timeConverter.parseDuration
-          ? timeConverter.parseDuration(child.props.duration)
-          : child.props.endTime
-          ? timeConverter.toTimestamp(child.props.endTime) - startTime
+    // Use items prop if provided, otherwise extract from children
+    if (items && items.length > 0) {
+      // Use items prop (more efficient)
+      items.forEach((item) => {
+        const startTime = timeConverter.toTimestamp(item.startTime);
+        const duration = item.duration && timeConverter.parseDuration
+          ? timeConverter.parseDuration(item.duration)
+          : item.endTime
+          ? timeConverter.toTimestamp(item.endTime) - startTime
           : 0;
 
-        items.push({
+        itemsData.push({
           startTime,
           endTime: startTime + duration,
           duration,
-          type: child.props.type || child.props.children?.props?.type || 'default'
+          type: item.type || 'default'
         });
-      }
-    });
+      });
+    } else {
+      // Extract item data from children (fallback)
+      React.Children.forEach(children, (child) => {
+        if (React.isValidElement(child) && child.props.startTime) {
+          const startTime = timeConverter.toTimestamp(child.props.startTime);
+          const duration = child.props.duration && timeConverter.parseDuration
+            ? timeConverter.parseDuration(child.props.duration)
+            : child.props.endTime
+            ? timeConverter.toTimestamp(child.props.endTime) - startTime
+            : 0;
+
+          itemsData.push({
+            startTime,
+            endTime: startTime + duration,
+            duration,
+            type: child.props.type || child.props.children?.props?.type || 'default'
+          });
+        }
+      });
+    }
 
     // Determine granularity
     const viewportDuration = viewport.end - viewport.start;
@@ -336,8 +358,8 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     // Get availability config from somewhere (you may need to pass this through context)
     const availability: AvailabilityConfig | undefined = undefined; // TODO: Get from context
 
-    return aggregateItemsByPeriod(items, viewport.start, viewport.end, granularity, availability);
-  }, [useAggregation, engine, timeConverter, children, aggregation, refreshCounter]);
+    return aggregateItemsByPeriod(itemsData, viewport.start, viewport.end, granularity, availability);
+  }, [useAggregation, engine, timeConverter, children, items, aggregation, refreshCounter]);
 
   // Calculate sub-row assignments for overlapping items
   const subRowAssignments = useMemo(() => {
@@ -509,6 +531,28 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
               getTypeStyle={getAggregatedTypeStyle}
               renderPeriod={renderAggregatedPeriod}
             />
+          ) : items && renderItem && engine && timeConverter ? (
+            /* Optimized rendering: Filter items BEFORE creating components */
+            (() => {
+              const viewport = engine.getViewportState();
+              const visibleItems = items.filter((item) => {
+                const startTimestamp = timeConverter.toTimestamp(item.startTime);
+                let endTimestamp: number;
+
+                if (item.endTime) {
+                  endTimestamp = timeConverter.toTimestamp(item.endTime);
+                } else if (item.duration && timeConverter.parseDuration) {
+                  const durationMs = timeConverter.parseDuration(item.duration);
+                  endTimestamp = startTimestamp + durationMs;
+                } else {
+                  endTimestamp = startTimestamp;
+                }
+
+                return endTimestamp >= viewport.start && startTimestamp <= viewport.end;
+              });
+
+              return visibleItems.map((item, index) => renderItem(item, index));
+            })()
           ) : (
             /* Children - filter by viewport first for performance, then offset row props */
             React.Children.map(children, (child, index) => {

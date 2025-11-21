@@ -348,7 +348,24 @@ export interface TimelineRowProps {
   renderAggregatedPeriod?: (params: AggregatedPeriodRenderParams) => ReactNode;
   /** Function to get style for aggregated bar type segments */
   getAggregatedTypeStyle?: (type: string) => { backgroundColor?: string; color?: string };
-  /** Children (typically TimelineItem components) */
+  /**
+   * Optional: Item data for optimized rendering with large datasets.
+   * When provided, TimelineRow will filter items by viewport before rendering.
+   * Use with renderItem for best performance with 1000+ items.
+   */
+  items?: Array<{
+    startTime: TimeValue;
+    duration?: DurationValue;
+    endTime?: TimeValue;
+    type?: string;
+    [key: string]: any;
+  }>;
+  /**
+   * Optional: Render function for items (use with items prop).
+   * Only called for visible items, dramatically improving performance.
+   */
+  renderItem?: (item: any, index: number) => ReactNode;
+  /** Children (typically TimelineItem components) - used when items/renderItem not provided */
   children?: ReactNode;
 }
 /**
