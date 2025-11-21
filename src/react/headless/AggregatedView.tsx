@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import type { AggregatedPeriod, AggregatedPeriodRenderParams } from '../types';
 import { useTimelineContext } from './TimelineContext';
-import { useTimelineRowContext } from './TimelineRow';
 
 export interface AggregatedViewProps {
   /** Aggregated periods to render */
@@ -30,19 +29,11 @@ export const AggregatedView: React.FC<AggregatedViewProps> = ({
   className
 }) => {
   const { engine } = useTimelineContext();
-  const rowContext = useTimelineRowContext();
 
   const rowTop = useMemo(() => {
-    // Account for parent TimelineRow's starting position
-    let absoluteRow = row;
-    if (rowContext) {
-      const headerHeight = 40;
-      const headerRows = (rowContext.collapsible) ? headerHeight / rowHeight : 0;
-      const containerStartRow = rowContext.startRow + headerRows;
-      absoluteRow = containerStartRow + row;
-    }
-    return absoluteRow * rowHeight;
-  }, [row, rowHeight, rowContext]);
+    // TimelineRow already passes absolute row position, so just use it directly
+    return row * rowHeight;
+  }, [row, rowHeight]);
 
   if (!engine) {
     return null;
