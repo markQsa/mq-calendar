@@ -110,7 +110,17 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 
     // Use dragged row while dragging vertically, otherwise use the prop
     const effectiveRow = isDragging && draggedRow !== null ? draggedRow : row;
-    const baseTop = effectiveRow * rowHeightPx;
+
+    // Account for parent TimelineRow's starting position and header rows
+    let absoluteRow = effectiveRow;
+    if (rowContext) {
+      const headerHeight = 40;
+      const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
+      const containerStartRow = rowContext.startRow + headerRows;
+      absoluteRow = containerStartRow + effectiveRow;
+    }
+
+    const baseTop = absoluteRow * rowHeightPx;
 
     // If item is in a sub-row due to overlapping, adjust position
     if (subRow !== undefined && subRowCount !== undefined && subRowCount > 1) {
@@ -119,7 +129,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
     }
 
     return baseTop;
-  }, [row, subRow, subRowCount, isDragging, draggedRow]);
+  }, [row, subRow, subRowCount, isDragging, draggedRow, rowContext]);
 
   const height = useMemo(() => {
     const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
