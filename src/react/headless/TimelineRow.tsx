@@ -510,9 +510,35 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
               renderPeriod={renderAggregatedPeriod}
             />
           ) : (
-            /* Children - offset their row prop by startRow and account for header */
+            /* Children - filter by viewport first for performance, then offset row props */
             React.Children.map(children, (child, index) => {
-              if (React.isValidElement(child) && typeof child.props.row === 'number') {
+              // Performance optimization: Filter TimelineItems by viewport before rendering
+              if (React.isValidElement<any>(child) &&
+                  child.props?.startTime &&
+                  engine &&
+                  timeConverter) {
+                const viewport = engine.getViewportState();
+                const startTimestamp = timeConverter.toTimestamp(child.props.startTime);
+
+                // Calculate end time
+                let endTimestamp: number;
+                if (child.props.endTime) {
+                  endTimestamp = timeConverter.toTimestamp(child.props.endTime);
+                } else if (child.props.duration && timeConverter.parseDuration) {
+                  const durationMs = timeConverter.parseDuration(child.props.duration);
+                  endTimestamp = startTimestamp + durationMs;
+                } else {
+                  endTimestamp = startTimestamp;
+                }
+
+                // Skip items outside viewport
+                if (endTimestamp < viewport.start || startTimestamp > viewport.end) {
+                  return null;
+                }
+              }
+
+
+              if (React.isValidElement<any>(child) && typeof child.props?.row === 'number') {
                 const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
                 const absoluteRow = calculatedStartRow + headerRows + child.props.row;
 
