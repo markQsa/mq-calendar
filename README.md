@@ -1,9 +1,13 @@
-# mq-timeline-calendar
+<div align="center">
+  <img src="https://raw.githubusercontent.com/markQsa/mq-calendar/main/logo.svg" alt="mq-timeline-calendar logo" width="200" height="200">
 
-A flexible, headless timeline/calendar component for React with smooth scrolling, zooming, and drag-and-drop capabilities.
+  # mq-timeline-calendar
 
-[![npm version](https://img.shields.io/npm/v/mq-timeline-calendar.svg)](https://www.npmjs.com/package/mq-timeline-calendar)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  A flexible, headless timeline/calendar component for React with smooth scrolling, zooming, and drag-and-drop capabilities.
+
+  [![npm version](https://img.shields.io/npm/v/mq-timeline-calendar.svg)](https://www.npmjs.com/package/mq-timeline-calendar)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+</div>
 
 ## Features
 

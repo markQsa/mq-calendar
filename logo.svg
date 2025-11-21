@@ -1,0 +1,40 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#3b82f6" opacity="0.1"/>
+
+  <!-- Main timeline axis -->
+  <line x1="30" y1="100" x2="170" y2="100" stroke="#3b82f6" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Time markers (vertical lines) -->
+  <line x1="50" y1="90" x2="50" y2="110" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+  <line x1="80" y1="85" x2="80" y2="115" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+  <line x1="120" y1="85" x2="120" y2="115" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+  <line x1="150" y1="90" x2="150" y2="110" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Timeline items/blocks -->
+  <rect x="45" y="60" width="30" height="20" rx="4" fill="#10b981" opacity="0.8"/>
+  <rect x="85" y="65" width="25" height="20" rx="4" fill="#8b5cf6" opacity="0.8"/>
+  <rect x="115" y="58" width="35" height="20" rx="4" fill="#f59e0b" opacity="0.8"/>
+
+  <!-- Timeline items on second row -->
+  <rect x="55" y="120" width="20" height="20" rx="4" fill="#ec4899" opacity="0.8"/>
+  <rect x="105" y="122" width="40" height="20" rx="4" fill="#14b8a6" opacity="0.8"/>
+
+  <!-- Pinpoint markers -->
+  <circle cx="50" cy="100" r="5" fill="#ef4444" opacity="0.9"/>
+  <circle cx="80" cy="100" r="5" fill="#ef4444" opacity="0.9"/>
+  <circle cx="120" cy="100" r="5" fill="#ef4444" opacity="0.9"/>
+  <circle cx="150" cy="100" r="5" fill="#ef4444" opacity="0.9"/>
+
+  <!-- Zoom/magnify icon in corner -->
+  <g transform="translate(160, 40)">
+    <circle cx="0" cy="0" r="12" stroke="#3b82f6" stroke-width="2.5" fill="none"/>
+    <line x1="8" y1="8" x2="15" y2="15" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-4" y1="0" x2="4" y2="0" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+    <line x1="0" y1="-4" x2="0" y2="4" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Arrow indicators (scroll) -->
+  <path d="M25 100 L30 95 L30 105 Z" fill="#3b82f6" opacity="0.6"/>
+  <path d="M175 100 L170 95 L170 105 Z" fill="#3b82f6" opacity="0.6"/>
+</svg>
