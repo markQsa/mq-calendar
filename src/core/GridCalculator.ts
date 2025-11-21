@@ -194,7 +194,8 @@ export class GridCalculator {
     // Approximate character widths for system-ui font
     // Primary text uses larger font size (14px, weight 600)
     // Non-primary text uses smaller font size (12px, weight 400)
-    const avgCharWidth = isPrimary ? 8 : 7;
+    // Using conservative estimates to prevent overflow
+    const avgCharWidth = isPrimary ? 9 : 8;
     return text.length * avgCharWidth + 16; // Add padding (8px on each side)
   }
 
@@ -292,8 +293,8 @@ export class GridCalculator {
     // Longest case: e.g., "Vko52 Maalis 2025" for Finnish
     const combinedLabel = `${weekAbbr}52 ${longestMonthLabel} 2025`;
     const combinedWidth = this.estimateTextWidth(combinedLabel, false);
-    // Allow 80% threshold - combined captions use distributed layout
-    return combinedWidth <= weekWidth * 1.25;
+    // Combined label must fit within the cell width
+    return combinedWidth <= weekWidth;
   }
 
   /**
