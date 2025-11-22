@@ -14,9 +14,19 @@ Thanks for your interest in **mq-timeline-calendar** - a headless React timeline
 This is the place to:
 - **Ask questions** about usage, implementation, or best practices
 - **Share your projects** built with mq-timeline-calendar
-- **Suggest features** or improvements
+- **Request features** using our [feature request template](../../discussions/new?category=ideas&template=feature-request.yml)
 - **Get help** troubleshooting issues
 - **Discuss ideas** before opening issues or PRs
+
+### 💡 Feature Requests
+
+Have an idea for a new feature? We'd love to hear it! Use the **Ideas** category with our feature request template to:
+- Describe your use case
+- Propose a solution
+- Get community feedback through upvotes and comments
+- See if others have similar needs
+
+Popular feature requests may be converted into issues and added to the roadmap!
 
 ## Getting Started
 
