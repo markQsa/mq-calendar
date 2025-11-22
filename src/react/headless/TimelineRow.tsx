@@ -368,26 +368,27 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     }
 
     // Group items by their row prop
-    const itemsByRow = new Map<number, Array<{ child: React.ReactElement; timeRangeItem: TimeRangeItem }>>();
+    const itemsByRow = new Map<number, Array<{ id: string | number; timeRangeItem: TimeRangeItem }>>();
 
-    React.Children.forEach(children, (child, index) => {
-      if (React.isValidElement(child) && child.props.startTime) {
-        const itemRow = typeof child.props.row === 'number' ? child.props.row : 0;
+    // Process items from items prop if provided
+    if (items && items.length > 0) {
+      items.forEach((item, index) => {
+        const itemRow = typeof item.row === 'number' ? item.row : 0;
 
         // Calculate time range
-        const startTime = timeConverter.toTimestamp(child.props.startTime);
+        const startTime = timeConverter.toTimestamp(item.startTime);
         let duration = 0;
 
-        if (child.props.endTime) {
-          duration = timeConverter.toTimestamp(child.props.endTime) - startTime;
-        } else if (child.props.duration && timeConverter.parseDuration) {
-          duration = timeConverter.parseDuration(child.props.duration);
+        if (item.endTime) {
+          duration = timeConverter.toTimestamp(item.endTime) - startTime;
+        } else if (item.duration && timeConverter.parseDuration) {
+          duration = timeConverter.parseDuration(item.duration);
         }
 
         const endTime = startTime + duration;
 
-        // Create a unique ID for this item (using index as fallback)
-        const itemId = child.key || `item-${index}`;
+        // Create a unique ID for this item
+        const itemId = item.id || `item-${index}`;
 
         const timeRangeItem: TimeRangeItem = {
           id: itemId,
@@ -398,15 +399,48 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
         if (!itemsByRow.has(itemRow)) {
           itemsByRow.set(itemRow, []);
         }
-        itemsByRow.get(itemRow)!.push({ child, timeRangeItem });
-      }
-    });
+        itemsByRow.get(itemRow)!.push({ id: itemId, timeRangeItem });
+      });
+    } else {
+      // Process items from children
+      React.Children.forEach(children, (child, index) => {
+        if (React.isValidElement(child) && child.props.startTime) {
+          const itemRow = typeof child.props.row === 'number' ? child.props.row : 0;
+
+          // Calculate time range
+          const startTime = timeConverter.toTimestamp(child.props.startTime);
+          let duration = 0;
+
+          if (child.props.endTime) {
+            duration = timeConverter.toTimestamp(child.props.endTime) - startTime;
+          } else if (child.props.duration && timeConverter.parseDuration) {
+            duration = timeConverter.parseDuration(child.props.duration);
+          }
+
+          const endTime = startTime + duration;
+
+          // Create a unique ID for this item (using index as fallback)
+          const itemId = child.key || `item-${index}`;
+
+          const timeRangeItem: TimeRangeItem = {
+            id: itemId,
+            startTime,
+            endTime
+          };
+
+          if (!itemsByRow.has(itemRow)) {
+            itemsByRow.set(itemRow, []);
+          }
+          itemsByRow.get(itemRow)!.push({ id: itemId, timeRangeItem });
+        }
+      });
+    }
 
     // Detect overlaps for each row
     const assignments = new Map<string | number, { subRow: number; subRowCount: number }>();
 
-    for (const [, items] of itemsByRow) {
-      const timeRangeItems = items.map(item => item.timeRangeItem);
+    for (const [, rowItems] of itemsByRow) {
+      const timeRangeItems = rowItems.map(item => item.timeRangeItem);
       const rowAssignments = detectOverlapsAndAssignSubRows(timeRangeItems);
 
       // Merge into main assignments map
@@ -419,7 +453,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     }
 
     return assignments;
-  }, [children, timeConverter, engine, refreshCounter]);
+  }, [children, items, timeConverter, engine, refreshCounter]);
 
   const contextValue = useMemo(
     () => ({
@@ -551,7 +585,34 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
                 return endTimestamp >= viewport.start && startTimestamp <= viewport.end;
               });
 
-              return visibleItems.map((item, index) => renderItem(item, index));
+              return visibleItems.map((item, index) => {
+                const element = renderItem(item, index);
+
+                // Apply subRow assignments if the element is a TimelineItem
+                if (React.isValidElement(element)) {
+                  const itemId = item.id || `item-${index}`;
+                  const assignment = subRowAssignments.get(itemId);
+                  const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
+                  const absoluteRow = calculatedStartRow + headerRows + (typeof item.row === 'number' ? item.row : 0);
+
+                  // Get sub-row assignment for this item
+                  const hasSubRows = assignment && assignment.subRowCount > 1;
+
+                  return React.cloneElement(element as React.ReactElement<any>, {
+                    row: absoluteRow,
+                    subRow: assignment?.subRow,
+                    subRowCount: assignment?.subRowCount,
+                    style: {
+                      ...element.props.style,
+                      marginTop: '4px',
+                      marginBottom: '4px',
+                      ...(hasSubRows ? {} : { height: 'calc(var(--timeline-row-height) - 8px)' })
+                    }
+                  });
+                }
+
+                return element;
+              });
             })()
           ) : (
             /* Children - filter by viewport first for performance, then offset row props */
