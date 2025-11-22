@@ -569,28 +569,31 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             /* Optimized rendering: Filter items BEFORE creating components */
             (() => {
               const viewport = engine.getViewportState();
-              const visibleItems = items.filter((item) => {
-                const startTimestamp = timeConverter.toTimestamp(item.startTime);
-                let endTimestamp: number;
+              // Track original indices while filtering
+              const visibleItemsWithIndices = items
+                .map((item, originalIndex) => ({ item, originalIndex }))
+                .filter(({ item }) => {
+                  const startTimestamp = timeConverter.toTimestamp(item.startTime);
+                  let endTimestamp: number;
 
-                if (item.endTime) {
-                  endTimestamp = timeConverter.toTimestamp(item.endTime);
-                } else if (item.duration && timeConverter.parseDuration) {
-                  const durationMs = timeConverter.parseDuration(item.duration);
-                  endTimestamp = startTimestamp + durationMs;
-                } else {
-                  endTimestamp = startTimestamp;
-                }
+                  if (item.endTime) {
+                    endTimestamp = timeConverter.toTimestamp(item.endTime);
+                  } else if (item.duration && timeConverter.parseDuration) {
+                    const durationMs = timeConverter.parseDuration(item.duration);
+                    endTimestamp = startTimestamp + durationMs;
+                  } else {
+                    endTimestamp = startTimestamp;
+                  }
 
-                return endTimestamp >= viewport.start && startTimestamp <= viewport.end;
-              });
+                  return endTimestamp >= viewport.start && startTimestamp <= viewport.end;
+                });
 
-              return visibleItems.map((item, index) => {
-                const element = renderItem(item, index);
+              return visibleItemsWithIndices.map(({ item, originalIndex }) => {
+                const element = renderItem(item, originalIndex);
 
                 // Apply subRow assignments if the element is a TimelineItem
                 if (React.isValidElement(element)) {
-                  const itemId = item.id || `item-${index}`;
+                  const itemId = item.id || `item-${originalIndex}`;
                   const assignment = subRowAssignments.get(itemId);
                   const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
                   const absoluteRow = calculatedStartRow + headerRows + (typeof item.row === 'number' ? item.row : 0);
