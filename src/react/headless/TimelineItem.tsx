@@ -389,6 +389,8 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
           pointerEvents: 'auto',
           cursor: draggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
           opacity: isDragging ? 0.8 : 1,
+          // Smooth transitions for dynamic overlap during drag
+          transition: isDragging ? 'top 0.2s ease-out, height 0.2s ease-out' : 'none',
           ...style,
           // Allow style.height to override if provided, otherwise use calculated height
           height: style?.height || height
