@@ -212,6 +212,8 @@ export type TimelineItemAlign = 'left' | 'center' | 'right';
  * Props for TimelineItem component
  */
 export interface TimelineItemProps {
+  /** Unique identifier for the item (optional - auto-generated if not provided) */
+  id?: string | number;
   /** Start time of the item - accepts Date, timestamp, or ISO string */
   startTime: TimeValue;
   /**

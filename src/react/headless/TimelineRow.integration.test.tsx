@@ -296,7 +296,7 @@ describe('TimelineRow Integration Tests', () => {
               id="render-prop-row"
               rowCount={1}
               items={testItems}
-              renderItem={(item, index) => (
+              renderItem={(item) => (
                 <TimelineItem
                   key={item.id}
                   startTime={item.startTime}

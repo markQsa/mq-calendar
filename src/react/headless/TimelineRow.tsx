@@ -178,12 +178,22 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   );
 };
 
+interface DraggedItemInfo {
+  itemId: string | number;
+  startTime: number;
+  endTime: number;
+  row: number;
+}
+
 interface TimelineRowContextValue {
   id: string;
   startRow: number;
   rowCount: number;
   isExpanded: boolean;
   collapsible: boolean;
+  // Drag tracking
+  registerDraggedItem: (itemId: string | number, startTime: number, endTime: number, row: number) => void;
+  unregisterDraggedItem: (itemId: string | number) => void;
 }
 
 const TimelineRowContext = createContext<TimelineRowContextValue | undefined>(undefined);
@@ -224,6 +234,25 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
   // Generate ID if not provided
   const rowId = id || `row-${Math.random().toString(36).substr(2, 9)}`;
+
+  // Track dragged items for dynamic overlap detection
+  const [draggedItems, setDraggedItems] = useState<Map<string | number, DraggedItemInfo>>(new Map());
+
+  const registerDraggedItem = useCallback((itemId: string | number, startTime: number, endTime: number, row: number) => {
+    setDraggedItems(prev => {
+      const newMap = new Map(prev);
+      newMap.set(itemId, { itemId, startTime, endTime, row });
+      return newMap;
+    });
+  }, []);
+
+  const unregisterDraggedItem = useCallback((itemId: string | number) => {
+    setDraggedItems(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(itemId);
+      return newMap;
+    });
+  }, []);
 
   const rowHeight = useMemo(() => {
     return parseInt(getComputedStyle(document.documentElement)
@@ -436,6 +465,32 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       });
     }
 
+    // Merge dragged items into the calculation
+    // This allows dynamic overlap detection while dragging
+    for (const draggedItem of draggedItems.values()) {
+      const itemRow = draggedItem.row;
+
+      // Update or add the dragged item with its current position
+      const existingItems = itemsByRow.get(itemRow) || [];
+      const existingIndex = existingItems.findIndex(item => item.id === draggedItem.itemId);
+
+      const timeRangeItem: TimeRangeItem = {
+        id: draggedItem.itemId,
+        startTime: draggedItem.startTime,
+        endTime: draggedItem.endTime
+      };
+
+      if (existingIndex >= 0) {
+        // Update existing item with dragged position
+        existingItems[existingIndex] = { id: draggedItem.itemId, timeRangeItem };
+      } else {
+        // Add new dragged item
+        existingItems.push({ id: draggedItem.itemId, timeRangeItem });
+      }
+
+      itemsByRow.set(itemRow, existingItems);
+    }
+
     // Detect overlaps for each row
     const assignments = new Map<string | number, { subRow: number; subRowCount: number }>();
 
@@ -453,7 +508,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     }
 
     return assignments;
-  }, [children, items, timeConverter, engine, refreshCounter]);
+  }, [children, items, timeConverter, engine, refreshCounter, draggedItems]);
 
   const contextValue = useMemo(
     () => ({
@@ -461,9 +516,11 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       startRow: calculatedStartRow,
       rowCount,
       isExpanded,
-      collapsible
+      collapsible,
+      registerDraggedItem,
+      unregisterDraggedItem
     }),
-    [rowId, calculatedStartRow, rowCount, isExpanded, collapsible]
+    [rowId, calculatedStartRow, rowCount, isExpanded, collapsible, registerDraggedItem, unregisterDraggedItem]
   );
 
   // Default header renderer

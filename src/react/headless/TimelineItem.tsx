@@ -14,6 +14,7 @@ const snapToInterval = (timestamp: number, intervalMs: number = 15 * 60 * 1000):
  * Item component for positioning content at specific times
  */
 const TimelineItemComponent: React.FC<TimelineItemProps> = ({
+  id: providedId,
   startTime,
   duration,
   endTime,
@@ -33,6 +34,9 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 }) => {
   const { engine, timeConverter, refreshCounter } = useTimelineContext();
   const rowContext = useTimelineRowContext();
+
+  // Generate stable ID if not provided
+  const idRef = useRef<string | number>(providedId ?? `item-${Math.random().toString(36).substr(2, 9)}`);
   // const rowGroupContext = useTimelineRowGroup(); // For future cross-TimelineRow dragging
 
   // Drag state
@@ -44,6 +48,18 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   const currentDraggedRow = useRef<number | null>(null);
   const currentDraggedRowGroupId = useRef<string | undefined>(undefined);
   const dragMode = useRef<'horizontal' | 'vertical' | null>(null);
+
+  // Helper to calculate end timestamp for drag tracking
+  const calculateEndTimestamp = (startTimestamp: number): number => {
+    if (endTime) {
+      return timeConverter.toTimestamp(endTime);
+    } else if (duration !== undefined) {
+      const durationMs = timeConverter.parseDuration?.(duration) ?? (typeof duration === 'number' ? duration : 0);
+      return startTimestamp + durationMs;
+    }
+    // No duration - point in time
+    return startTimestamp;
+  };
 
   // Helper to convert absolute row to relative row within container
   const absoluteToRelativeRow = (absoluteRow: number): number => {
@@ -223,6 +239,13 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         currentDraggedTimestamp.current = startTimestamp;
         currentDraggedRow.current = row;
         currentDraggedRowGroupId.current = rowContext?.id;
+
+        // Register with TimelineRow for dynamic overlap detection
+        if (rowContext?.registerDraggedItem) {
+          const endTimestamp = calculateEndTimestamp(startTimestamp);
+          rowContext.registerDraggedItem(idRef.current, startTimestamp, endTimestamp, absoluteToRelativeRow(row));
+        }
+
         onDragStart?.(startTimestamp, absoluteToRelativeRow(row), rowContext?.id);
       }
 
@@ -236,6 +259,13 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 
         currentDraggedTimestamp.current = snappedTimestamp;
         setDraggedTimestamp(snappedTimestamp);
+
+        // Update drag tracking with new timestamp
+        if (rowContext?.registerDraggedItem) {
+          const endTimestamp = calculateEndTimestamp(snappedTimestamp);
+          rowContext.registerDraggedItem(idRef.current, snappedTimestamp, endTimestamp, absoluteToRelativeRow(currentDraggedRow.current!));
+        }
+
         onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!), currentDraggedRowGroupId.current);
       } else if (dragMode.current === 'vertical') {
         // Vertical drag - change row only
@@ -260,6 +290,13 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
             const oldRow = currentDraggedRow.current!;
             currentDraggedRow.current = newRow;
             setDraggedRow(newRow);
+
+            // Update drag tracking with new row
+            if (rowContext.registerDraggedItem) {
+              const endTimestamp = calculateEndTimestamp(currentDraggedTimestamp.current!);
+              rowContext.registerDraggedItem(idRef.current, currentDraggedTimestamp.current!, endTimestamp, absoluteToRelativeRow(newRow));
+            }
+
             onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow), rowContext.id, rowContext.id);
           }
 
@@ -291,6 +328,11 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         const finalTimestamp = currentDraggedTimestamp.current;
         const finalRow = currentDraggedRow.current;
         const finalRowGroupId = currentDraggedRowGroupId.current;
+
+        // Unregister from drag tracking
+        if (rowContext?.unregisterDraggedItem) {
+          rowContext.unregisterDraggedItem(idRef.current);
+        }
 
         setIsDragging(false);
         setDraggedTimestamp(null);
