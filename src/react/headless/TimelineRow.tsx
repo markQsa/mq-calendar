@@ -592,17 +592,14 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
                 const element = renderItem(item, originalIndex);
 
                 // Apply subRow assignments if the element is a TimelineItem
-                if (React.isValidElement(element)) {
+                if (React.isValidElement<any>(element)) {
                   const itemId = item.id || `item-${originalIndex}`;
                   const assignment = subRowAssignments.get(itemId);
-                  const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
-                  const absoluteRow = calculatedStartRow + headerRows + (typeof item.row === 'number' ? item.row : 0);
 
                   // Get sub-row assignment for this item
                   const hasSubRows = assignment && assignment.subRowCount > 1;
 
                   return React.cloneElement(element as React.ReactElement<any>, {
-                    row: absoluteRow,
                     subRow: assignment?.subRow,
                     subRowCount: assignment?.subRowCount,
                     style: {
@@ -647,9 +644,6 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
 
               if (React.isValidElement<any>(child) && typeof child.props?.row === 'number') {
-                const headerRows = (collapsible && showHeader) ? headerHeight / rowHeight : 0;
-                const absoluteRow = calculatedStartRow + headerRows + child.props.row;
-
                 // Get sub-row assignment for this child
                 const itemId = child.key || `item-${index}`;
                 const assignment = subRowAssignments.get(itemId);
@@ -659,7 +653,6 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
                 const hasSubRows = assignment && assignment.subRowCount > 1;
 
                 return React.cloneElement(child as React.ReactElement<any>, {
-                  row: absoluteRow,
                   subRow: assignment?.subRow,
                   subRowCount: assignment?.subRowCount,
                   style: {
