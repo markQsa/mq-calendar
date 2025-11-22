@@ -668,10 +668,14 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
               return visibleItemsWithIndices.map(({ item, originalIndex }) => {
                 const element = renderItem(item, originalIndex);
 
+                // Calculate stable ID (must match ID used in overlap detection)
+                const itemId = item.id || `item-${originalIndex}`;
+
                 // Don't pass subRow/subRowCount via props - let TimelineItem read from context
-                // This allows dynamic updates during drag
+                // But DO pass id to ensure consistency between TimelineRow and TimelineItem
                 if (React.isValidElement<any>(element)) {
                   return React.cloneElement(element as React.ReactElement<any>, {
+                    id: itemId,
                     style: {
                       ...element.props.style,
                       marginTop: '4px',
@@ -713,9 +717,13 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
 
               if (React.isValidElement<any>(child) && typeof child.props?.row === 'number') {
+                // Calculate stable ID for this child (must match ID used in overlap detection)
+                const itemId = child.props.id || child.key || `item-${_index}`;
+
                 // Don't pass subRow/subRowCount via props - let TimelineItem read from context
-                // This allows dynamic updates during drag
+                // But DO pass id to ensure consistency between TimelineRow and TimelineItem
                 return React.cloneElement(child as React.ReactElement<any>, {
+                  id: itemId,
                   style: {
                     ...child.props.style,
                     marginTop: '4px',
