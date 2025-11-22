@@ -194,6 +194,10 @@ interface TimelineRowContextValue {
   // Drag tracking
   registerDraggedItem: (itemId: string | number, startTime: number, endTime: number, row: number) => void;
   unregisterDraggedItem: (itemId: string | number) => void;
+  // Get current subRow assignment for an item (for dynamic overlap during drag)
+  getSubRowAssignment: (itemId: string | number) => { subRow: number; subRowCount: number } | undefined;
+  // Version counter that changes when subRow assignments change (triggers re-render)
+  subRowAssignmentsVersion: number;
 }
 
 const TimelineRowContext = createContext<TimelineRowContextValue | undefined>(undefined);
@@ -237,6 +241,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
   // Track dragged items for dynamic overlap detection
   const [draggedItems, setDraggedItems] = useState<Map<string | number, DraggedItemInfo>>(new Map());
+  const [dragVersion, setDragVersion] = useState(0);
 
   const registerDraggedItem = useCallback((itemId: string | number, startTime: number, endTime: number, row: number) => {
     setDraggedItems(prev => {
@@ -244,6 +249,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       newMap.set(itemId, { itemId, startTime, endTime, row });
       return newMap;
     });
+    setDragVersion(v => v + 1); // Increment on every drag update
   }, []);
 
   const unregisterDraggedItem = useCallback((itemId: string | number) => {
@@ -448,8 +454,8 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
           const endTime = startTime + duration;
 
-          // Create a unique ID for this item (using index as fallback)
-          const itemId = child.key || `item-${index}`;
+          // Create a unique ID for this item (check id prop, key, or use index as fallback)
+          const itemId = child.props.id || child.key || `item-${index}`;
 
           const timeRangeItem: TimeRangeItem = {
             id: itemId,
@@ -480,15 +486,18 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
         endTime: draggedItem.endTime
       };
 
+      // Create new array to ensure React detects the change
+      const updatedItems = [...existingItems];
+
       if (existingIndex >= 0) {
         // Update existing item with dragged position
-        existingItems[existingIndex] = { id: draggedItem.itemId, timeRangeItem };
+        updatedItems[existingIndex] = { id: draggedItem.itemId, timeRangeItem };
       } else {
         // Add new dragged item
-        existingItems.push({ id: draggedItem.itemId, timeRangeItem });
+        updatedItems.push({ id: draggedItem.itemId, timeRangeItem });
       }
 
-      itemsByRow.set(itemRow, existingItems);
+      itemsByRow.set(itemRow, updatedItems);
     }
 
     // Detect overlaps for each row
@@ -510,6 +519,15 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     return assignments;
   }, [children, items, timeConverter, engine, refreshCounter, draggedItems]);
 
+  const getSubRowAssignment = useCallback((itemId: string | number) => {
+    return subRowAssignments.get(itemId);
+  }, [subRowAssignments]);
+
+  // Version counter for subRow assignments - increments when assignments change
+  const subRowAssignmentsVersion = useMemo(() => {
+    return dragVersion + subRowAssignments.size;
+  }, [dragVersion, subRowAssignments]);
+
   const contextValue = useMemo(
     () => ({
       id: rowId,
@@ -518,9 +536,11 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       isExpanded,
       collapsible,
       registerDraggedItem,
-      unregisterDraggedItem
+      unregisterDraggedItem,
+      getSubRowAssignment,
+      subRowAssignmentsVersion
     }),
-    [rowId, calculatedStartRow, rowCount, isExpanded, collapsible, registerDraggedItem, unregisterDraggedItem]
+    [rowId, calculatedStartRow, rowCount, isExpanded, collapsible, registerDraggedItem, unregisterDraggedItem, getSubRowAssignment, subRowAssignmentsVersion]
   );
 
   // Default header renderer
@@ -648,22 +668,14 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
               return visibleItemsWithIndices.map(({ item, originalIndex }) => {
                 const element = renderItem(item, originalIndex);
 
-                // Apply subRow assignments if the element is a TimelineItem
+                // Don't pass subRow/subRowCount via props - let TimelineItem read from context
+                // This allows dynamic updates during drag
                 if (React.isValidElement<any>(element)) {
-                  const itemId = item.id || `item-${originalIndex}`;
-                  const assignment = subRowAssignments.get(itemId);
-
-                  // Get sub-row assignment for this item
-                  const hasSubRows = assignment && assignment.subRowCount > 1;
-
                   return React.cloneElement(element as React.ReactElement<any>, {
-                    subRow: assignment?.subRow,
-                    subRowCount: assignment?.subRowCount,
                     style: {
                       ...element.props.style,
                       marginTop: '4px',
-                      marginBottom: '4px',
-                      ...(hasSubRows ? {} : { height: 'calc(var(--timeline-row-height) - 8px)' })
+                      marginBottom: '4px'
                     }
                   });
                 }
@@ -673,7 +685,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             })()
           ) : (
             /* Children - filter by viewport first for performance, then offset row props */
-            React.Children.map(children, (child, index) => {
+            React.Children.map(children, (child, _index) => {
               // Performance optimization: Filter TimelineItems by viewport before rendering
               if (React.isValidElement<any>(child) &&
                   child.props?.startTime &&
@@ -701,22 +713,13 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
 
               if (React.isValidElement<any>(child) && typeof child.props?.row === 'number') {
-                // Get sub-row assignment for this child
-                const itemId = child.key || `item-${index}`;
-                const assignment = subRowAssignments.get(itemId);
-
-                // Only set height if there are no sub-rows or only one sub-row
-                // Otherwise, let TimelineItem calculate the height based on subRowCount
-                const hasSubRows = assignment && assignment.subRowCount > 1;
-
+                // Don't pass subRow/subRowCount via props - let TimelineItem read from context
+                // This allows dynamic updates during drag
                 return React.cloneElement(child as React.ReactElement<any>, {
-                  subRow: assignment?.subRow,
-                  subRowCount: assignment?.subRowCount,
                   style: {
                     ...child.props.style,
                     marginTop: '4px',
-                    marginBottom: '4px',
-                    ...(hasSubRows ? {} : { height: 'calc(var(--timeline-row-height) - 8px)' })
+                    marginBottom: '4px'
                   }
                 });
               }

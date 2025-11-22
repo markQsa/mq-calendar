@@ -16,11 +16,11 @@ function App() {
   const [zoom, setZoom] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
 
-  // State for draggable item (horizontal only)
+  // State for draggable items (horizontal only) - overlapping to demonstrate dynamic detection
   const [dragItemTime, setDragItemTime] = useState(new Date("2025-04-10"));
+  const [dragItemTime2, setDragItemTime2] = useState(new Date("2025-04-20")); // Overlaps with first item
 
   // State for draggable item (row change allowed)
-  const [dragItemTime2, setDragItemTime2] = useState(new Date("2025-05-15"));
   const [dragItemRow2, setDragItemRow2] = useState(0);
 
   // State for drag events
@@ -340,15 +340,16 @@ function App() {
               </TimelineItem>
             </TimelineRow>
 
-            {/* Drag & Drop Demo Row - Horizontal Only */}
+            {/* Drag & Drop Demo Row - Horizontal Only with Dynamic Overlap Detection */}
             <TimelineRow
               id="drag-demo"
-              label="Drag & Drop Demo (Horizontal)"
+              label="Drag & Drop Demo (Horizontal) - Drag to see dynamic overlap!"
               rowCount={1}
               collapsible={true}
               defaultExpanded={true}
             >
               <TimelineItem
+                id="drag-item-1"
                 startTime={dragItemTime}
                 duration="5 days"
                 row={0}
@@ -378,6 +379,53 @@ function App() {
                   originalRowGroupId
                 ) => {
                   setDragItemTime(new Date(newTimestamp));
+                  setDragEvents((prev) => [
+                    `[${new Date().toLocaleTimeString()}] onDragEnd: ${new Date(
+                      newTimestamp
+                    ).toLocaleString()}, row ${newRow}, group ${newRowGroupId} (was: row ${originalRow}, group ${originalRowGroupId})`,
+                    ...prev.slice(0, 19),
+                  ]);
+                }}
+              >
+                <div
+                  className="timeline-item purple"
+                  style={{ border: "2px dashed #a855f7" }}
+                >
+                  Drag Me Horizontally!
+                </div>
+              </TimelineItem>
+
+              <TimelineItem
+                id="drag-item-2"
+                startTime={dragItemTime2}
+                duration="3 days"
+                row={0}
+                draggable={true}
+                onDragStart={(timestamp, row, rowGroupId) => {
+                  setDragEvents((prev) => [
+                    `[${new Date().toLocaleTimeString()}] onDragStart: ${new Date(
+                      timestamp
+                    ).toLocaleString()}, row ${row}, group ${rowGroupId}`,
+                    ...prev.slice(0, 19), // Keep last 20 events
+                  ]);
+                }}
+                onDrag={(currentTimestamp, currentRow, currentRowGroupId) => {
+                  setDragEvents((prev) => [
+                    `[${new Date().toLocaleTimeString()}] onDrag: ${new Date(
+                      currentTimestamp
+                    ).toLocaleString()}, row ${currentRow}, group ${currentRowGroupId}`,
+                    ...prev.slice(0, 19),
+                  ]);
+                }}
+                onDragEnd={(
+                  newTimestamp,
+                  originalTimestamp,
+                  newRow,
+                  originalRow,
+                  newRowGroupId,
+                  originalRowGroupId
+                ) => {
+                  setDragItemTime2(new Date(newTimestamp));
                   setDragEvents((prev) => [
                     `[${new Date().toLocaleTimeString()}] onDragEnd: ${new Date(
                       newTimestamp

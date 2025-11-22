@@ -138,29 +138,38 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 
     const baseTop = absoluteRow * rowHeightPx;
 
+    // Get real-time subRow assignment (for dynamic overlap during drag)
+    const currentAssignment = rowContext?.getSubRowAssignment?.(idRef.current);
+    const effectiveSubRow = currentAssignment?.subRow ?? subRow;
+    const effectiveSubRowCount = currentAssignment?.subRowCount ?? subRowCount;
+
     // If item is in a sub-row due to overlapping, adjust position
-    if (subRow !== undefined && subRowCount !== undefined && subRowCount > 1) {
-      const subRowHeight = rowHeightPx / subRowCount;
-      return baseTop + (subRow * subRowHeight);
+    if (effectiveSubRow !== undefined && effectiveSubRowCount !== undefined && effectiveSubRowCount > 1) {
+      const subRowHeight = rowHeightPx / effectiveSubRowCount;
+      return baseTop + (effectiveSubRow * subRowHeight);
     }
 
     return baseTop;
-  }, [row, subRow, subRowCount, isDragging, draggedRow, rowContext]);
+  }, [row, subRow, subRowCount, isDragging, draggedRow, rowContext, rowContext?.subRowAssignmentsVersion]);
 
   const height = useMemo(() => {
     const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
 
+    // Get real-time subRow assignment (for dynamic overlap during drag)
+    const currentAssignment = rowContext?.getSubRowAssignment?.(idRef.current);
+    const effectiveSubRowCount = currentAssignment?.subRowCount ?? subRowCount;
+
     // Calculate height based on sub-row count
-    if (subRowCount !== undefined && subRowCount > 1) {
-      const subRowHeight = rowHeightPx / subRowCount;
+    if (effectiveSubRowCount !== undefined && effectiveSubRowCount > 1) {
+      const subRowHeight = rowHeightPx / effectiveSubRowCount;
       // Account for margins (4px top + 4px bottom = 8px total)
       return `${subRowHeight - 8}px`;
     }
 
     // Default height with margins
     return 'calc(var(--timeline-row-height) - 8px)';
-  }, [subRowCount]);
+  }, [subRowCount, rowContext, rowContext?.subRowAssignmentsVersion]);
 
   // Calculate transform based on alignment
   const alignTransform = useMemo(() => {
@@ -243,7 +252,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         // Register with TimelineRow for dynamic overlap detection
         if (rowContext?.registerDraggedItem) {
           const endTimestamp = calculateEndTimestamp(startTimestamp);
-          rowContext.registerDraggedItem(idRef.current, startTimestamp, endTimestamp, absoluteToRelativeRow(row));
+          rowContext.registerDraggedItem(idRef.current, startTimestamp, endTimestamp, row); // row is already relative
         }
 
         onDragStart?.(startTimestamp, absoluteToRelativeRow(row), rowContext?.id);
@@ -263,7 +272,8 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         // Update drag tracking with new timestamp
         if (rowContext?.registerDraggedItem) {
           const endTimestamp = calculateEndTimestamp(snappedTimestamp);
-          rowContext.registerDraggedItem(idRef.current, snappedTimestamp, endTimestamp, absoluteToRelativeRow(currentDraggedRow.current!));
+          const relativeRow = currentDraggedRow.current!;
+          rowContext.registerDraggedItem(idRef.current, snappedTimestamp, endTimestamp, relativeRow); // row is already relative
         }
 
         onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!), currentDraggedRowGroupId.current);
@@ -294,7 +304,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
             // Update drag tracking with new row
             if (rowContext.registerDraggedItem) {
               const endTimestamp = calculateEndTimestamp(currentDraggedTimestamp.current!);
-              rowContext.registerDraggedItem(idRef.current, currentDraggedTimestamp.current!, endTimestamp, absoluteToRelativeRow(newRow));
+              rowContext.registerDraggedItem(idRef.current, currentDraggedTimestamp.current!, endTimestamp, newRowOffset); // newRowOffset is already relative
             }
 
             onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow), rowContext.id, rowContext.id);
