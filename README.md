@@ -33,11 +33,11 @@ npm install mq-timeline-calendar
 
 ## Live Demo
 
-Try out the timeline calendar in CodeSandbox:
+Try out the timeline calendar in StackBlitz:
 
-[![Edit on CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/github/markQsa/mq-calendar-demo/main)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/markQsa/mq-calendar-demo?file=README.md)
 
-[Open Demo →](https://codesandbox.io/p/github/markQsa/mq-calendar-demo/main)
+[Open Demo →](https://stackblitz.com/github/markQsa/mq-calendar-demo?file=README.md)
 
 ## Quick Start
 
