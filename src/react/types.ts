@@ -201,6 +201,10 @@ export interface TimelineCalendarProps {
   onViewportChange?: (start: Date, end: Date) => void;
   /** Callback when zoom changes */
   onZoomChange?: (pixelsPerMs: number) => void;
+  /** Whether to animate when startDate/endDate props change (default: true) */
+  animateDateChanges?: boolean;
+  /** Duration of date change animation in milliseconds (default: 500) */
+  animationDuration?: number;
 }
 
 /**

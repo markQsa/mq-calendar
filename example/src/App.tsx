@@ -11,17 +11,29 @@ import {
 
 type ThemeMode = "light" | "dark";
 
+// Date range presets for demonstrating smooth animation
+const dateRanges = {
+  "3 Years": { start: new Date("2024-01-01"), end: new Date("2026-12-31") },
+  "2025 Only": { start: new Date("2025-01-01"), end: new Date("2025-12-31") },
+  "Q1 2025": { start: new Date("2025-01-01"), end: new Date("2025-03-31") },
+  "January 2025": { start: new Date("2025-01-01"), end: new Date("2025-01-31") },
+  "This Week": {
+    start: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    end: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+  },
+};
+
 function App() {
   const [viewport, setViewport] = useState({ start: "", end: "" });
   const [zoom, setZoom] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
 
+  // State for date range (demonstrates smooth animation on change)
+  const [dateRange, setDateRange] = useState(dateRanges["3 Years"]);
+
   // State for draggable items (horizontal only) - overlapping to demonstrate dynamic detection
   const [dragItemTime, setDragItemTime] = useState(new Date("2025-04-10"));
   const [dragItemTime2, setDragItemTime2] = useState(new Date("2025-04-20")); // Overlaps with first item
-
-  // State for draggable item (row change allowed)
-  const [dragItemRow2, setDragItemRow2] = useState(0);
 
   // State for drag events
   const [dragEvents, setDragEvents] = useState<string[]>([]);
@@ -30,10 +42,33 @@ function App() {
     <div>
       <h1>Timeline Calendar Demo</h1>
 
+      {/* Date Range Controls - demonstrates smooth scroll/zoom animation */}
+      <div style={{ marginBottom: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <span style={{ fontWeight: "bold", alignSelf: "center" }}>Jump to:</span>
+        {Object.entries(dateRanges).map(([label, range]) => (
+          <button
+            key={label}
+            onClick={() => setDateRange(range)}
+            style={{
+              padding: "8px 16px",
+              cursor: "pointer",
+              backgroundColor: dateRange === range ? "#3b82f6" : "#e5e7eb",
+              color: dateRange === range ? "white" : "black",
+              border: "none",
+              borderRadius: "4px",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="timeline-wrapper">
         <TimelineCalendar
-          startDate={new Date("2024-01-01")}
-          endDate={new Date("2026-12-31")}
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+          animateDateChanges={true}
+          animationDuration={500}
           width="100%"
           height="1000px"
           minZoom="1000 years" // Maximum time span to display

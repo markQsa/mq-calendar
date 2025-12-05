@@ -37,7 +37,9 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   availability,
   children,
   onViewportChange,
-  onZoomChange
+  onZoomChange,
+  animateDateChanges = true,
+  animationDuration = 500
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const { width: containerWidth } = useResize(rootRef);
@@ -80,8 +82,26 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     containerWidth: containerWidth || 1000, // Default width until measured
     minZoom: minZoomValue,
     maxZoom: maxZoomValue,
-    locale
+    locale,
+    animateDateChanges,
+    animationDuration
   });
+
+  // Effect to notify zoom/viewport changes during date animations
+  // This is triggered by refreshCounter changes from the animation
+  useEffect(() => {
+    if (!engine) return;
+
+    if (onZoomChange) {
+      const zoom = engine.getZoomState();
+      onZoomChange(zoom.pixelsPerMs);
+    }
+
+    if (onViewportChange) {
+      const viewport = engine.getViewportState();
+      onViewportChange(new Date(viewport.start), new Date(viewport.end));
+    }
+  }, [engine, onViewportChange, onZoomChange, refreshCounter]);
 
   // Get current zoom state for current time line
   const currentPixelsPerMs = engine?.getZoomState().pixelsPerMs || 0;
@@ -98,8 +118,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
       engine.updateContainerWidth(containerWidth);
       refresh();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, containerWidth]);
+  }, [engine, containerWidth, refresh]);
 
   // Handle wheel events (scroll and zoom)
   useWheel(rootRef, {
