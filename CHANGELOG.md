@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-12-10
+
+### Added
+
+- Individual row height support via `height` prop on Row, TimelineRow, and CollapsibleRow components
+- Variable row heights with automatic cumulative positioning
+- Midpoint threshold for drag behavior across variable-height rows
+- `getRowAtPixelY` reverse lookup function for accurate drag detection with variable heights
+- `rowHeight` field added to all row context interfaces
+
+### Changed
+
+- Position calculation functions now use cumulative pixel heights instead of uniform row units
+- TimelineItem drag behavior now respects individual row heights
+- Falls back to `--timeline-row-height` CSS variable when `height` prop is not specified
+
+### Technical Details
+
+- Fully backward compatible - no breaking changes
+- All existing code continues to work without modifications
+- Enhanced drag experience with midpoint threshold prevents jittery behavior
+
 ## [0.1.5] - 2025-12-05
 
 ### Added
@@ -84,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 For changes in earlier beta releases, see the [GitHub commit history](https://github.com/markQsa/mq-calendar/commits/main).
 
+[0.2.0]: https://github.com/markQsa/mq-calendar/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/markQsa/mq-calendar/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/markQsa/mq-calendar/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/markQsa/mq-calendar/compare/v0.1.2...v0.1.3
