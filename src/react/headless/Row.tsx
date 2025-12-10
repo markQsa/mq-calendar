@@ -4,6 +4,7 @@ import type { RowProps } from '../types';
 interface RowContextValue {
   startRow: number;
   rowCount: number;
+  rowHeight: number;
 }
 
 const RowContext = createContext<RowContextValue | undefined>(undefined);
@@ -20,29 +21,32 @@ export const useRowContext = () => {
 export const Row: React.FC<RowProps> = ({
   startRow = 0,
   rowCount = 1,
+  height,
   className,
   style,
   children
 }) => {
-  const rowHeight = useMemo(() => {
+  const effectiveHeight = useMemo(() => {
+    if (height !== undefined) return height;
     return parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
-  }, []);
+  }, [height]);
 
   const top = useMemo(() => {
-    return startRow * rowHeight;
-  }, [startRow, rowHeight]);
+    return startRow * effectiveHeight;
+  }, [startRow, effectiveHeight]);
 
-  const height = useMemo(() => {
-    return rowCount * rowHeight;
-  }, [rowCount, rowHeight]);
+  const totalHeight = useMemo(() => {
+    return rowCount * effectiveHeight;
+  }, [rowCount, effectiveHeight]);
 
   const contextValue = useMemo(
     () => ({
       startRow,
-      rowCount
+      rowCount,
+      rowHeight: effectiveHeight
     }),
-    [startRow, rowCount]
+    [startRow, rowCount, effectiveHeight]
   );
 
   return (
@@ -55,7 +59,7 @@ export const Row: React.FC<RowProps> = ({
           top,
           left: 0,
           right: 0,
-          height,
+          height: totalHeight,
           zIndex: 1,
           pointerEvents: 'none',
           ...style

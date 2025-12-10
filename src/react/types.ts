@@ -277,6 +277,8 @@ export interface RowProps {
   startRow?: number;
   /** Number of rows this component occupies (default: 1) */
   rowCount?: number;
+  /** Height in pixels for each row (falls back to --timeline-row-height CSS variable if not specified) */
+  height?: number;
   /** Custom class name */
   className?: string;
   /** Custom inline style */
@@ -304,6 +306,8 @@ export interface CollapsibleRowProps {
   label: string;
   /** Number of rows this component occupies when expanded (default: 1) */
   rowCount?: number;
+  /** Height in pixels for each row (falls back to --timeline-row-height CSS variable if not specified) */
+  height?: number;
   /** Whether row is expanded by default (default: true) */
   defaultExpanded?: boolean;
   /** Custom class name for content area */
@@ -330,6 +334,8 @@ export interface TimelineRowProps {
   label?: string;
   /** Number of rows this component occupies when expanded (default: 1) */
   rowCount?: number;
+  /** Height in pixels for each row (falls back to --timeline-row-height CSS variable if not specified) */
+  height?: number;
   /** Starting row index - only used if not within TimelineRowGroup (default: 0) */
   startRow?: number;
   /** Whether this row can be collapsed (default: false) */

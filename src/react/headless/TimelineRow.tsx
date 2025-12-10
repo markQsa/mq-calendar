@@ -10,6 +10,7 @@ interface TimelineRowState {
   id: string;
   isExpanded: boolean;
   rowCount: number;
+  rowHeight: number; // Height in pixels for each row
   order: number;
   collapsible: boolean;
 }
@@ -18,9 +19,10 @@ interface TimelineRowGroupContextValue {
   getRowState: (id: string) => TimelineRowState | undefined;
   getCalculatedPosition: (id: string) => number;
   getRowAtAbsolutePosition: (absoluteRow: number) => { rowId: string; relativeRow: number } | null;
+  getRowAtPixelY: (pixelY: number) => { rowId: string; relativeRow: number; isInHeader: boolean; offsetInRow: number } | null;
   getTotalHeight: () => number;
   toggleRow: (id: string) => void;
-  registerRow: (id: string, rowCount: number, defaultExpanded: boolean, collapsible: boolean) => void;
+  registerRow: (id: string, rowCount: number, rowHeight: number, defaultExpanded: boolean, collapsible: boolean) => void;
   unregisterRow: (id: string) => void;
   version: number;
   rowsSize: number;
@@ -46,13 +48,13 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   const orderCounterRef = useRef(0);
   const [version, setVersion] = useState(0);
 
-  const registerRow = useCallback((id: string, rowCount: number, defaultExpanded: boolean, collapsible: boolean) => {
+  const registerRow = useCallback((id: string, rowCount: number, rowHeight: number, defaultExpanded: boolean, collapsible: boolean) => {
     setRows(prev => {
       if (prev.has(id)) {
         return prev;
       }
       const newMap = new Map(prev);
-      newMap.set(id, { id, rowCount, isExpanded: defaultExpanded, order: orderCounterRef.current, collapsible });
+      newMap.set(id, { id, rowCount, rowHeight, isExpanded: defaultExpanded, order: orderCounterRef.current, collapsible });
       orderCounterRef.current += 1;
       return newMap;
     });
@@ -83,12 +85,11 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, [rows]);
 
   const getCalculatedPosition = useCallback((id: string): number => {
-    const rowHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
     const headerHeight = 40;
-    const headerRows = headerHeight / rowHeight;
+    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
 
-    let position = 0;
+    let cumulativeHeight = 0; // Track in pixels
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
 
     for (const row of rowArray) {
@@ -97,12 +98,16 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
       }
 
       // Each row takes: header height (if collapsible) + (content height if expanded)
-      const rowHeaderRows = row.collapsible ? headerRows : 0;
-      const contentRows = row.isExpanded ? row.rowCount : 0;
-      position += rowHeaderRows + contentRows;
+      if (row.collapsible) {
+        cumulativeHeight += headerHeight;
+      }
+      if (row.isExpanded) {
+        cumulativeHeight += row.rowCount * row.rowHeight;
+      }
     }
 
-    return position;
+    // Return position in "row units" relative to default height for backward compatibility
+    return cumulativeHeight / defaultHeight;
   }, [rows]);
 
   const getRowAtAbsolutePosition = useCallback((absoluteRow: number): { rowId: string; relativeRow: number } | null => {
@@ -139,21 +144,85 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, [rows]);
 
   const getTotalHeight = useCallback((): number => {
-    const rowHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
     const headerHeight = 40;
-    const headerRows = headerHeight / rowHeight;
+    let totalHeight = 0; // Track in pixels
 
-    let totalHeight = 0;
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
 
     for (const row of rowArray) {
-      const rowHeaderRows = row.collapsible ? headerRows : 0;
-      const contentRows = row.isExpanded ? row.rowCount : 0;
-      totalHeight += (rowHeaderRows + contentRows) * rowHeight;
+      if (row.collapsible) {
+        totalHeight += headerHeight;
+      }
+      if (row.isExpanded) {
+        totalHeight += row.rowCount * row.rowHeight;
+      }
     }
 
     return Math.max(totalHeight, 200); // At least 200px
+  }, [rows]);
+
+  // Convert pixel Y position to row info (for drag operations with midpoint threshold)
+  const getRowAtPixelY = useCallback((pixelY: number): {
+    rowId: string;
+    relativeRow: number;
+    isInHeader: boolean;
+    offsetInRow: number;
+  } | null => {
+    const headerHeight = 40;
+    let currentY = 0;
+    const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
+
+    for (const row of rowArray) {
+      if (!row.isExpanded) {
+        // Collapsed row - only has header
+        if (row.collapsible) {
+          const headerEnd = currentY + headerHeight;
+          if (pixelY >= currentY && pixelY < headerEnd) {
+            return {
+              rowId: row.id,
+              relativeRow: 0,
+              isInHeader: true,
+              offsetInRow: pixelY - currentY
+            };
+          }
+          currentY = headerEnd;
+        }
+        continue;
+      }
+
+      // Check header (if collapsible)
+      if (row.collapsible) {
+        const headerEnd = currentY + headerHeight;
+        if (pixelY >= currentY && pixelY < headerEnd) {
+          return {
+            rowId: row.id,
+            relativeRow: 0,
+            isInHeader: true,
+            offsetInRow: pixelY - currentY
+          };
+        }
+        currentY = headerEnd;
+      }
+
+      // Check content area
+      const contentEnd = currentY + (row.rowCount * row.rowHeight);
+      if (pixelY >= currentY && pixelY < contentEnd) {
+        const offsetInContent = pixelY - currentY;
+        const relativeRow = Math.floor(offsetInContent / row.rowHeight);
+        const offsetInRow = offsetInContent % row.rowHeight;
+
+        return {
+          rowId: row.id,
+          relativeRow,
+          isInHeader: false,
+          offsetInRow
+        };
+      }
+
+      currentY = contentEnd;
+    }
+
+    return null;
   }, [rows]);
 
   const contextValue = useMemo(
@@ -161,6 +230,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
       getRowState,
       getCalculatedPosition,
       getRowAtAbsolutePosition,
+      getRowAtPixelY,
       getTotalHeight,
       toggleRow,
       registerRow,
@@ -168,7 +238,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
       version,
       rowsSize: rows.size
     }),
-    [getRowState, getCalculatedPosition, getRowAtAbsolutePosition, getTotalHeight, toggleRow, registerRow, unregisterRow, version, rows.size]
+    [getRowState, getCalculatedPosition, getRowAtAbsolutePosition, getRowAtPixelY, getTotalHeight, toggleRow, registerRow, unregisterRow, version, rows.size]
   );
 
   return (
@@ -189,6 +259,7 @@ interface TimelineRowContextValue {
   id: string;
   startRow: number;
   rowCount: number;
+  rowHeight: number;
   isExpanded: boolean;
   collapsible: boolean;
   // Drag tracking
@@ -217,6 +288,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   id,
   label,
   rowCount = 1,
+  height,
   startRow,
   collapsible = false,
   showHeader = true,
@@ -260,10 +332,12 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     });
   }, []);
 
-  const rowHeight = useMemo(() => {
+  // Compute effective height
+  const effectiveHeight = useMemo(() => {
+    if (height !== undefined) return height;
     return parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
-  }, []);
+  }, [height]);
 
   const headerHeight = 40;
 
@@ -292,25 +366,28 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   // Register with group if in a group context
   useEffect(() => {
     if (registerRowFn && unregisterRowFn) {
-      registerRowFn(rowId, rowCount, defaultExpanded, collapsible);
+      registerRowFn(rowId, rowCount, effectiveHeight, defaultExpanded, collapsible);
       return () => unregisterRowFn(rowId);
     }
-  }, [registerRowFn, unregisterRowFn, rowId, rowCount, defaultExpanded, collapsible]);
+  }, [registerRowFn, unregisterRowFn, rowId, rowCount, effectiveHeight, defaultExpanded, collapsible]);
 
   const rowState = getRowStateFn?.(rowId);
   const isExpanded = rowState?.isExpanded ?? defaultExpanded;
 
+  // Convert position from "row units" to actual pixels using default height
   const top = useMemo(() => {
-    return calculatedStartRow * rowHeight;
-  }, [calculatedStartRow, rowHeight]);
+    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+    return calculatedStartRow * defaultHeight;
+  }, [calculatedStartRow]);
 
   const contentTop = useMemo(() => {
     return top + (collapsible && showHeader ? headerHeight : 0);
   }, [top, headerHeight, collapsible, showHeader]);
 
   const contentHeight = useMemo(() => {
-    return isExpanded ? (rowCount * rowHeight) : 0;
-  }, [isExpanded, rowCount, rowHeight]);
+    return isExpanded ? (rowCount * effectiveHeight) : 0;
+  }, [isExpanded, rowCount, effectiveHeight]);
 
   const handleToggle = useCallback(() => {
     if (collapsible && toggleRowFn) {
@@ -533,6 +610,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       id: rowId,
       startRow: calculatedStartRow,
       rowCount,
+      rowHeight: effectiveHeight,
       isExpanded,
       collapsible,
       registerDraggedItem,
@@ -540,7 +618,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       getSubRowAssignment,
       subRowAssignmentsVersion
     }),
-    [rowId, calculatedStartRow, rowCount, isExpanded, collapsible, registerDraggedItem, unregisterDraggedItem, getSubRowAssignment, subRowAssignmentsVersion]
+    [rowId, calculatedStartRow, rowCount, effectiveHeight, isExpanded, collapsible, registerDraggedItem, unregisterDraggedItem, getSubRowAssignment, subRowAssignmentsVersion]
   );
 
   // Default header renderer
@@ -637,8 +715,8 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
           {useAggregation && aggregatedPeriods ? (
             <AggregatedView
               periods={aggregatedPeriods}
-              row={calculatedStartRow + ((collapsible && showHeader) ? headerHeight / rowHeight : 0)}
-              rowHeight={rowHeight}
+              row={calculatedStartRow + ((collapsible && showHeader) ? headerHeight / parseInt(getComputedStyle(document.documentElement).getPropertyValue('--timeline-row-height') || '60') : 0)}
+              rowHeight={effectiveHeight}
               getTypeStyle={getAggregatedTypeStyle}
               renderPeriod={renderAggregatedPeriod}
             />

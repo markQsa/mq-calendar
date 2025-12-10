@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { TimelineItemProps } from '../types';
 import { useTimelineContext } from './TimelineContext';
-import { useTimelineRowContext } from './TimelineRow';
+import { useTimelineRowContext, useTimelineRowGroup } from './TimelineRow';
+import { useCollapsibleRowGroup } from './CollapsibleRow';
 
 /**
  * Snap timestamp to nearest interval (default: 15 minutes)
@@ -34,10 +35,11 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 }) => {
   const { engine, timeConverter, refreshCounter } = useTimelineContext();
   const rowContext = useTimelineRowContext();
+  const timelineRowGroupContext = useTimelineRowGroup();
+  const collapsibleRowGroupContext = useCollapsibleRowGroup();
 
   // Generate stable ID if not provided
   const idRef = useRef<string | number>(providedId ?? `item-${Math.random().toString(36).substr(2, 9)}`);
-  // const rowGroupContext = useTimelineRowGroup(); // For future cross-TimelineRow dragging
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
@@ -64,7 +66,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   // Helper to convert absolute row to relative row within container
   const absoluteToRelativeRow = (absoluteRow: number): number => {
     if (!rowContext) return absoluteRow;
-    const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+    const rowHeightPx = rowContext.rowHeight || parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
     const headerHeight = 40;
     const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
@@ -121,7 +123,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   }, [engine, timeConverter, startTime, duration, endTime, refreshCounter, isDragging, draggedTimestamp]);
 
   const top = useMemo(() => {
-    const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+    const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
 
     // Use dragged row while dragging vertically, otherwise use the prop
@@ -150,10 +152,10 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
     }
 
     return baseTop;
-  }, [row, subRow, subRowCount, isDragging, draggedRow, rowContext, rowContext?.subRowAssignmentsVersion]);
+  }, [row, subRow, subRowCount, isDragging, draggedRow, rowContext, rowContext?.subRowAssignmentsVersion, rowContext?.rowHeight]);
 
   const height = useMemo(() => {
-    const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+    const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
 
     // Get real-time subRow assignment (for dynamic overlap during drag)
@@ -278,51 +280,104 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 
         onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!), currentDraggedRowGroupId.current);
       } else if (dragMode.current === 'vertical') {
-        // Vertical drag - change row only
-        const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
+        // Vertical drag - change row only with midpoint threshold
+        const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
           .getPropertyValue('--timeline-row-height') || '60');
-        const deltaRows = Math.round(deltaY / rowHeightPx);
 
-        // For now, constrain dragging within the same TimelineRow
-        // Cross-TimelineRow dragging requires architectural changes (portals/re-parenting)
-        if (rowContext) {
-          // Constrain within current TimelineRow
-          let newRowOffset = dragStartRef.current.rowOffset + deltaRows;
-          const maxRowOffset = rowContext.rowCount - 1;
-          newRowOffset = Math.max(0, Math.min(newRowOffset, maxRowOffset));
+        // Try to use group context for accurate variable-height lookup
+        const groupContext = timelineRowGroupContext || collapsibleRowGroupContext;
 
-          const headerHeight = 40;
-          const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
-          const containerStartRow = rowContext.startRow + headerRows;
-          const newRow = containerStartRow + newRowOffset;
+        if (groupContext?.getRowAtPixelY && rowContext) {
+          // Use group context with midpoint threshold for variable heights
+          const currentY = dragStartRef.current.y + deltaY;
+          const rowInfo = groupContext.getRowAtPixelY(currentY);
 
-          if (newRow !== currentDraggedRow.current) {
-            const oldRow = currentDraggedRow.current!;
-            currentDraggedRow.current = newRow;
-            setDraggedRow(newRow);
+          if (rowInfo && !rowInfo.isInHeader && rowInfo.rowId === rowContext.id) {
+            // Calculate midpoint threshold
+            const midpoint = rowHeightPx / 2;
 
-            // Update drag tracking with new row
-            if (rowContext.registerDraggedItem) {
-              const endTimestamp = calculateEndTimestamp(currentDraggedTimestamp.current!);
-              rowContext.registerDraggedItem(idRef.current, currentDraggedTimestamp.current!, endTimestamp, newRowOffset); // newRowOffset is already relative
+            // Only change row if past midpoint
+            let newRowOffset = rowInfo.relativeRow;
+            if (rowInfo.offsetInRow > midpoint && newRowOffset < rowContext.rowCount - 1) {
+              // Don't move to next row yet - still in current row
+            } else if (rowInfo.offsetInRow < midpoint && newRowOffset > 0) {
+              // Check if we should stay in previous row
+              if (rowInfo.offsetInRow < -midpoint) {
+                newRowOffset = Math.max(0, newRowOffset - 1);
+              }
             }
 
-            onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow), rowContext.id, rowContext.id);
-          }
+            // Constrain within current TimelineRow
+            newRowOffset = Math.max(0, Math.min(newRowOffset, rowContext.rowCount - 1));
 
-          onDrag?.(currentDraggedTimestamp.current!, absoluteToRelativeRow(newRow), rowContext.id);
+            const headerHeight = 40;
+            const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+              .getPropertyValue('--timeline-row-height') || '60');
+            const headerRows = (rowContext.collapsible) ? headerHeight / defaultHeight : 0;
+            const containerStartRow = rowContext.startRow + headerRows;
+            const newRow = containerStartRow + newRowOffset;
+
+            if (newRow !== currentDraggedRow.current) {
+              const oldRow = currentDraggedRow.current!;
+              currentDraggedRow.current = newRow;
+              setDraggedRow(newRow);
+
+              // Update drag tracking with new row
+              if (rowContext.registerDraggedItem) {
+                const endTimestamp = calculateEndTimestamp(currentDraggedTimestamp.current!);
+                rowContext.registerDraggedItem(idRef.current, currentDraggedTimestamp.current!, endTimestamp, newRowOffset);
+              }
+
+              onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow), rowContext.id, rowContext.id);
+            }
+
+            onDrag?.(currentDraggedTimestamp.current!, absoluteToRelativeRow(newRow), rowContext.id);
+          }
         } else {
-          // No container at all
-          const newRowOffset = Math.max(0, dragStartRef.current.rowOffset + deltaRows);
+          // Fallback to uniform height calculation with midpoint threshold
+          const deltaRows = Math.round(deltaY / rowHeightPx);
 
-          if (newRowOffset !== currentDraggedRow.current) {
-            const oldRow = currentDraggedRow.current!;
-            currentDraggedRow.current = newRowOffset;
-            setDraggedRow(newRowOffset);
-            onRowChange?.(newRowOffset, oldRow);
+          if (rowContext) {
+            // Constrain within current TimelineRow
+            let newRowOffset = dragStartRef.current.rowOffset + deltaRows;
+            const maxRowOffset = rowContext.rowCount - 1;
+            newRowOffset = Math.max(0, Math.min(newRowOffset, maxRowOffset));
+
+            const headerHeight = 40;
+            const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+              .getPropertyValue('--timeline-row-height') || '60');
+            const headerRows = (rowContext.collapsible) ? headerHeight / defaultHeight : 0;
+            const containerStartRow = rowContext.startRow + headerRows;
+            const newRow = containerStartRow + newRowOffset;
+
+            if (newRow !== currentDraggedRow.current) {
+              const oldRow = currentDraggedRow.current!;
+              currentDraggedRow.current = newRow;
+              setDraggedRow(newRow);
+
+              // Update drag tracking with new row
+              if (rowContext.registerDraggedItem) {
+                const endTimestamp = calculateEndTimestamp(currentDraggedTimestamp.current!);
+                rowContext.registerDraggedItem(idRef.current, currentDraggedTimestamp.current!, endTimestamp, newRowOffset);
+              }
+
+              onRowChange?.(absoluteToRelativeRow(newRow), absoluteToRelativeRow(oldRow), rowContext.id, rowContext.id);
+            }
+
+            onDrag?.(currentDraggedTimestamp.current!, absoluteToRelativeRow(newRow), rowContext.id);
+          } else {
+            // No container at all
+            const newRowOffset = Math.max(0, dragStartRef.current.rowOffset + deltaRows);
+
+            if (newRowOffset !== currentDraggedRow.current) {
+              const oldRow = currentDraggedRow.current!;
+              currentDraggedRow.current = newRowOffset;
+              setDraggedRow(newRowOffset);
+              onRowChange?.(newRowOffset, oldRow);
+            }
+
+            onDrag?.(currentDraggedTimestamp.current!, newRowOffset);
           }
-
-          onDrag?.(currentDraggedTimestamp.current!, newRowOffset);
         }
       }
     };

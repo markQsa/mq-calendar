@@ -5,6 +5,7 @@ interface CollapsibleRowState {
   id: string;
   isExpanded: boolean;
   rowCount: number;
+  rowHeight: number; // Height in pixels for each row
   order: number; // Order in which rows were registered
 }
 
@@ -12,8 +13,9 @@ interface CollapsibleRowGroupContextValue {
   getRowState: (id: string) => CollapsibleRowState | undefined;
   getCalculatedPosition: (id: string) => number;
   getTotalHeight: () => number; // Get total height of all collapsible rows
+  getRowAtPixelY: (pixelY: number) => { rowId: string; relativeRow: number; isInHeader: boolean; offsetInRow: number } | null;
   toggleRow: (id: string) => void;
-  registerRow: (id: string, rowCount: number, defaultExpanded: boolean) => void;
+  registerRow: (id: string, rowCount: number, rowHeight: number, defaultExpanded: boolean) => void;
   unregisterRow: (id: string) => void;
   version: number; // Version counter to trigger re-renders
   rowsSize: number; // Number of rows to trigger re-renders on add/remove
@@ -40,14 +42,14 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
   const orderCounterRef = useRef(0); // Use ref instead of state for order counter
   const [version, setVersion] = useState(0); // Version counter for triggering re-renders
 
-  const registerRow = useCallback((id: string, rowCount: number, defaultExpanded: boolean) => {
+  const registerRow = useCallback((id: string, rowCount: number, rowHeight: number, defaultExpanded: boolean) => {
     setRows(prev => {
       // Only update if row doesn't exist
       if (prev.has(id)) {
         return prev;
       }
       const newMap = new Map(prev);
-      newMap.set(id, { id, rowCount, isExpanded: defaultExpanded, order: orderCounterRef.current });
+      newMap.set(id, { id, rowCount, rowHeight, isExpanded: defaultExpanded, order: orderCounterRef.current });
       orderCounterRef.current += 1;
       return newMap;
     });
@@ -81,12 +83,11 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
 
   // Calculate position dynamically based on previous rows' heights
   const getCalculatedPosition = useCallback((id: string): number => {
-    const rowHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
     const headerHeight = 40;
-    const headerRows = headerHeight / rowHeight;
+    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
 
-    let position = 0;
+    let cumulativeHeight = 0; // Track in pixels
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
 
     for (const row of rowArray) {
@@ -94,30 +95,84 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
         break;
       }
 
-      // Each row takes: header height + (content height if expanded)
-      const contentRows = row.isExpanded ? row.rowCount : 0;
-      position += headerRows + contentRows;
+      // Add header height
+      cumulativeHeight += headerHeight;
+
+      // Add content height if expanded (rowCount * individual rowHeight)
+      if (row.isExpanded) {
+        cumulativeHeight += row.rowCount * row.rowHeight;
+      }
     }
 
-    return position;
+    // Return position in "row units" relative to default height for backward compatibility
+    // Components will convert this back to pixels using their own height
+    return cumulativeHeight / defaultHeight;
   }, [rows]);
 
   // Get total height of all collapsible rows
   const getTotalHeight = useCallback((): number => {
-    const rowHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
     const headerHeight = 40;
-    const headerRows = headerHeight / rowHeight;
+    let totalHeight = 0; // Track in pixels
 
-    let totalRows = 0;
     const rowArray = Array.from(rows.values());
 
     for (const row of rowArray) {
-      const contentRows = row.isExpanded ? row.rowCount : 0;
-      totalRows += headerRows + contentRows;
+      totalHeight += headerHeight;
+      if (row.isExpanded) {
+        totalHeight += row.rowCount * row.rowHeight;
+      }
     }
 
-    return totalRows;
+    return totalHeight; // Return actual pixel height
+  }, [rows]);
+
+  // Convert pixel Y position to row info (for drag operations with midpoint threshold)
+  const getRowAtPixelY = useCallback((pixelY: number): {
+    rowId: string;
+    relativeRow: number;
+    isInHeader: boolean;
+    offsetInRow: number;
+  } | null => {
+    const headerHeight = 40;
+    let currentY = 0;
+    const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
+
+    for (const row of rowArray) {
+      const headerEnd = currentY + headerHeight;
+
+      // Check if in header
+      if (pixelY >= currentY && pixelY < headerEnd) {
+        return {
+          rowId: row.id,
+          relativeRow: 0,
+          isInHeader: true,
+          offsetInRow: pixelY - currentY
+        };
+      }
+
+      currentY = headerEnd;
+
+      if (!row.isExpanded) continue;
+
+      // Check if in content area
+      const contentEnd = currentY + (row.rowCount * row.rowHeight);
+      if (pixelY >= currentY && pixelY < contentEnd) {
+        const offsetInContent = pixelY - currentY;
+        const relativeRow = Math.floor(offsetInContent / row.rowHeight);
+        const offsetInRow = offsetInContent % row.rowHeight;
+
+        return {
+          rowId: row.id,
+          relativeRow,
+          isInHeader: false,
+          offsetInRow
+        };
+      }
+
+      currentY = contentEnd;
+    }
+
+    return null;
   }, [rows]);
 
   const contextValue = useMemo(
@@ -125,13 +180,14 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
       getRowState,
       getCalculatedPosition,
       getTotalHeight,
+      getRowAtPixelY,
       toggleRow,
       registerRow,
       unregisterRow,
       version,
       rowsSize: rows.size  // Add rows.size to force updates when rows are added/removed
     }),
-    [getRowState, getCalculatedPosition, getTotalHeight, toggleRow, registerRow, unregisterRow, version, rows.size]
+    [getRowState, getCalculatedPosition, getTotalHeight, getRowAtPixelY, toggleRow, registerRow, unregisterRow, version, rows.size]
   );
 
   return (
@@ -144,7 +200,9 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
 interface CollapsibleRowContextValue {
   startRow: number;
   rowCount: number;
+  rowHeight: number;
   isExpanded: boolean;
+  collapsible: boolean;
 }
 
 const CollapsibleRowContext = createContext<CollapsibleRowContextValue | undefined>(undefined);
@@ -163,6 +221,7 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
   id,
   label,
   rowCount = 1,
+  height,
   defaultExpanded = true,
   className,
   style,
@@ -179,19 +238,21 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
 
   const { registerRow, unregisterRow, getRowState, getCalculatedPosition, toggleRow, version, rowsSize } = groupContext;
 
+  // Compute effective height
+  const effectiveHeight = useMemo(() => {
+    if (height !== undefined) return height;
+    return parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+  }, [height]);
+
   // Register this row on mount
   useEffect(() => {
-    registerRow(id, rowCount, defaultExpanded);
+    registerRow(id, rowCount, effectiveHeight, defaultExpanded);
     return () => unregisterRow(id);
-  }, [id, rowCount, defaultExpanded, registerRow, unregisterRow]);
+  }, [id, rowCount, effectiveHeight, defaultExpanded, registerRow, unregisterRow]);
 
   const rowState = getRowState(id);
   const isExpanded = rowState?.isExpanded ?? defaultExpanded;
-
-  const rowHeight = useMemo(() => {
-    return parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
-  }, []);
 
   const headerHeight = 40; // Fixed header height
 
@@ -200,17 +261,20 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
     return getCalculatedPosition(id);
   }, [getCalculatedPosition, id, version, rowsSize]); // Depend on version and rowsSize to trigger recalculation
 
+  // Convert position from "row units" to actual pixels using default height
   const top = useMemo(() => {
-    return startRow * rowHeight;
-  }, [startRow, rowHeight]);
+    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+    return startRow * defaultHeight;
+  }, [startRow]);
 
   const contentTop = useMemo(() => {
     return top + headerHeight;
   }, [top, headerHeight]);
 
   const contentHeight = useMemo(() => {
-    return isExpanded ? (rowCount * rowHeight) : 0;
-  }, [isExpanded, rowCount, rowHeight]);
+    return isExpanded ? (rowCount * effectiveHeight) : 0;
+  }, [isExpanded, rowCount, effectiveHeight]);
 
   const handleToggle = useCallback(() => {
     toggleRow(id);
@@ -220,9 +284,11 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
     () => ({
       startRow,
       rowCount,
-      isExpanded
+      rowHeight: effectiveHeight,
+      isExpanded,
+      collapsible: true
     }),
-    [startRow, rowCount, isExpanded]
+    [startRow, rowCount, effectiveHeight, isExpanded]
   );
 
   // Default header renderer
@@ -295,9 +361,11 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
             if (React.isValidElement(child) && typeof child.props.row === 'number') {
               // Calculate absolute row position:
               // - Start at startRow
-              // - Add header height (in row units)
+              // - Add header height (in row units using default height for compatibility)
               // - Add child's relative row
-              const headerRows = headerHeight / rowHeight;
+              const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+                .getPropertyValue('--timeline-row-height') || '60');
+              const headerRows = headerHeight / defaultHeight;
               const absoluteRow = startRow + headerRows + child.props.row;
 
               // Clone with modified row position and add margin
@@ -307,7 +375,7 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                   ...child.props.style,
                   marginTop: '4px',
                   marginBottom: '4px',
-                  height: 'calc(var(--timeline-row-height) - 8px)' // Subtract margins from height
+                  height: `${effectiveHeight - 8}px` // Use effective height, subtract margins
                 }
               });
             }
