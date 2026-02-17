@@ -3,6 +3,7 @@ import type { TimelineCalendarProps, TimelineTheme } from '../types';
 import { useTimelineEngine } from '../hooks/useTimelineEngine';
 import { useResize } from '../hooks/useResize';
 import { useWheel } from '../hooks/useWheel';
+import { useTouch } from '../hooks/useTouch';
 import { useCurrentTime } from '../hooks/useCurrentTime';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarContent } from './CalendarContent';
@@ -39,7 +40,9 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   onViewportChange,
   onZoomChange,
   animateDateChanges = true,
-  animationDuration = 500
+  animationDuration = 500,
+  touchMomentum = true,
+  touchDecelerationRate = 0.95
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const { width: containerWidth } = useResize(rootRef);
@@ -156,6 +159,39 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     }
   });
 
+  // Handle touch events (scroll and pinch-to-zoom with momentum)
+  useTouch(rootRef, {
+    onScroll: (deltaX) => {
+      if (!engine) return;
+
+      engine.scroll(deltaX);
+      refresh();
+
+      if (onViewportChange) {
+        const viewport = engine.getViewportState();
+        onViewportChange(new Date(viewport.start), new Date(viewport.end));
+      }
+    },
+    onZoom: (delta, clientX) => {
+      if (!engine) return;
+
+      engine.zoom(delta, clientX);
+      refresh();
+
+      if (onZoomChange) {
+        const zoomState = engine.getZoomState();
+        onZoomChange(zoomState.pixelsPerMs);
+      }
+
+      if (onViewportChange) {
+        const viewport = engine.getViewportState();
+        onViewportChange(new Date(viewport.start), new Date(viewport.end));
+      }
+    },
+    momentum: touchMomentum,
+    decelerationRate: touchDecelerationRate
+  });
+
 
   // Build CSS variables from theme
   const cssVars = useMemo((): CSSProperties => {
@@ -171,7 +207,8 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
       '--timeline-content-font': resolvedTheme.fonts?.content || 'system-ui, sans-serif',
       '--timeline-header-height': `${resolvedTheme.spacing?.headerHeight || 80}px`,
       '--timeline-header-row-height': `${resolvedTheme.spacing?.headerRowHeight || 40}px`,
-      '--timeline-row-height': `${resolvedTheme.spacing?.rowHeight || 60}px`
+      '--timeline-row-height': `${resolvedTheme.spacing?.rowHeight || 60}px`,
+      '--timeline-row-header-height': `${resolvedTheme.spacing?.rowHeaderHeight || 40}px`
     };
 
     // Add time type specific colors

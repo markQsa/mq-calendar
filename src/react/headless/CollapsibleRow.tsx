@@ -83,7 +83,8 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
 
   // Calculate position dynamically based on previous rows' heights
   const getCalculatedPosition = useCallback((id: string): number => {
-    const headerHeight = 40;
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-header-height') || '40');
     const defaultHeight = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
 
@@ -111,7 +112,8 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
 
   // Get total height of all collapsible rows
   const getTotalHeight = useCallback((): number => {
-    const headerHeight = 40;
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-header-height') || '40');
     let totalHeight = 0; // Track in pixels
 
     const rowArray = Array.from(rows.values());
@@ -133,7 +135,8 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
     isInHeader: boolean;
     offsetInRow: number;
   } | null => {
-    const headerHeight = 40;
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-header-height') || '40');
     let currentY = 0;
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
 
@@ -254,7 +257,8 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
   const rowState = getRowState(id);
   const isExpanded = rowState?.isExpanded ?? defaultExpanded;
 
-  const headerHeight = 40; // Fixed header height
+  const headerHeight = parseInt(getComputedStyle(document.documentElement)
+    .getPropertyValue('--timeline-row-header-height') || '40');
 
   // Get dynamically calculated position - recalculate when version or rowsSize changes
   const startRow = useMemo(() => {

@@ -85,7 +85,8 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, [rows]);
 
   const getCalculatedPosition = useCallback((id: string): number => {
-    const headerHeight = 40;
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-header-height') || '40');
     const defaultHeight = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
 
@@ -113,7 +114,8 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   const getRowAtAbsolutePosition = useCallback((absoluteRow: number): { rowId: string; relativeRow: number } | null => {
     const rowHeight = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
-    const headerHeight = 40;
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-header-height') || '40');
     const headerRows = headerHeight / rowHeight;
 
     let currentPosition = 0;
@@ -144,7 +146,8 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, [rows]);
 
   const getTotalHeight = useCallback((): number => {
-    const headerHeight = 40;
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-header-height') || '40');
     let totalHeight = 0; // Track in pixels
 
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
@@ -168,7 +171,8 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
     isInHeader: boolean;
     offsetInRow: number;
   } | null => {
-    const headerHeight = 40;
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-header-height') || '40');
     let currentY = 0;
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
 
@@ -339,7 +343,8 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       .getPropertyValue('--timeline-row-height') || '60');
   }, [height]);
 
-  const headerHeight = 40;
+  const headerHeight = parseInt(getComputedStyle(document.documentElement)
+    .getPropertyValue('--timeline-row-header-height') || '40');
 
   // Extract context values to use as stable dependencies
   const version = groupContext?.version;

@@ -75,8 +75,10 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
           <button
             onClick={onNavigateBackward}
             style={{
-              width: '32px',
-              height: '32px',
+              width: '44px',
+              height: '44px',
+              minWidth: '44px',
+              minHeight: '44px',
               border: '1px solid var(--timeline-header-border)',
               borderRadius: '4px',
               background: 'var(--timeline-header-bg)',
@@ -98,8 +100,10 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
           <button
             onClick={onNavigateForward}
             style={{
-              width: '32px',
-              height: '32px',
+              width: '44px',
+              height: '44px',
+              minWidth: '44px',
+              minHeight: '44px',
               border: '1px solid var(--timeline-header-border)',
               borderRadius: '4px',
               background: 'var(--timeline-header-bg)',

@@ -40,4 +40,4 @@ export {
 
 // Export themes and theme types
 export type { ThemeName } from './themes';
-export { lightTheme, darkTheme, themes } from './themes';
+export { lightTheme, darkTheme, compactTheme, compactDarkTheme, themes } from './themes';

@@ -85,11 +85,39 @@ export const darkTheme: TimelineTheme = {
 };
 
 /**
+ * Compact theme - mobile-friendly with larger touch targets
+ */
+export const compactTheme: TimelineTheme = {
+  ...lightTheme,
+  spacing: {
+    headerHeight: 96,
+    headerRowHeight: 40,
+    rowHeight: 72,
+    rowHeaderHeight: 48,
+  }
+};
+
+/**
+ * Compact dark theme - mobile-friendly dark variant
+ */
+export const compactDarkTheme: TimelineTheme = {
+  ...darkTheme,
+  spacing: {
+    headerHeight: 96,
+    headerRowHeight: 40,
+    rowHeight: 72,
+    rowHeaderHeight: 48,
+  }
+};
+
+/**
  * Available theme presets
  */
 export const themes = {
   light: lightTheme,
   dark: darkTheme,
+  compact: compactTheme,
+  'compact-dark': compactDarkTheme,
 } as const;
 
 export type ThemeName = keyof typeof themes;

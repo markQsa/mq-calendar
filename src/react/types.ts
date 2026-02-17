@@ -102,6 +102,7 @@ export interface TimelineTheme {
     headerHeight?: number;
     headerRowHeight?: number;
     rowHeight?: number;
+    rowHeaderHeight?: number;
   };
 }
 
@@ -183,8 +184,8 @@ export interface TimelineCalendarProps {
   timeConverter?: TimeConverter;
   /** Locale for date/time formatting */
   locale?: CalendarLocale;
-  /** Theme - either a preset name ('light' | 'dark') or a custom theme object */
-  theme?: 'light' | 'dark' | TimelineTheme;
+  /** Theme - either a preset name or a custom theme object */
+  theme?: 'light' | 'dark' | 'compact' | 'compact-dark' | TimelineTheme;
   /** Custom class names */
   classNames?: TimelineClassNames;
   /** Custom inline styles */
@@ -205,6 +206,10 @@ export interface TimelineCalendarProps {
   animateDateChanges?: boolean;
   /** Duration of date change animation in milliseconds (default: 500) */
   animationDuration?: number;
+  /** Enable touch momentum scrolling (default: true) */
+  touchMomentum?: boolean;
+  /** Deceleration rate for touch momentum (0-1, default: 0.95) */
+  touchDecelerationRate?: number;
 }
 
 /**
