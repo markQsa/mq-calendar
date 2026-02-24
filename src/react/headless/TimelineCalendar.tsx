@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo, CSSProperties } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback, CSSProperties } from 'react';
 import type { TimelineCalendarProps, TimelineTheme } from '../types';
 import { useTimelineEngine } from '../hooks/useTimelineEngine';
 import { useResize } from '../hooks/useResize';
@@ -42,9 +42,11 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   animateDateChanges = true,
   animationDuration = 500,
   touchMomentum = true,
-  touchDecelerationRate = 0.95
+  touchDecelerationRate = 0.95,
+  sidebar
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
+  const sidebarBodyRef = useRef<HTMLDivElement>(null);
   const { width: containerWidth } = useResize(rootRef);
 
   // Resolve theme - either use preset name or custom object
@@ -288,6 +290,29 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     });
   };
 
+  // Scroll sync: sync sidebar body scrollTop with the content area
+  const handleContentScroll = useCallback((e: Event) => {
+    const target = e.target as HTMLElement;
+    if (sidebarBodyRef.current) {
+      sidebarBodyRef.current.scrollTop = target.scrollTop;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sidebar) return;
+
+    // Find the [data-timeline-content] element inside the root
+    const root = rootRef.current;
+    if (!root) return;
+    const contentEl = root.querySelector('[data-timeline-content]');
+    if (!contentEl) return;
+
+    contentEl.addEventListener('scroll', handleContentScroll);
+    return () => {
+      contentEl.removeEventListener('scroll', handleContentScroll);
+    };
+  }, [sidebar, handleContentScroll]);
+
   // Context value
   const contextValue = useMemo(
     () => ({
@@ -298,6 +323,42 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     }),
     [engine, refresh, timeConverter, refreshCounter]
   );
+
+  // Shared calendar content (used in both sidebar and non-sidebar layouts)
+  const calendarHeader = (
+    <CalendarHeader
+      headerCells={headerCells}
+      classNames={classNames}
+      styles={styles}
+      renderHeaderCell={renderHeaderCell}
+      onHeaderCellClick={handleHeaderCellClick}
+      showNavigation={showNavigation}
+      onNavigateBackward={handleNavigateBackward}
+      onNavigateForward={handleNavigateForward}
+    />
+  );
+
+  const calendarContent = (
+    <CalendarContent
+      gridLines={gridLines}
+      classNames={classNames}
+      styles={styles}
+      renderGridLine={renderGridLine}
+    >
+      {availability && <AvailabilityOverlay config={availability} />}
+      {children}
+    </CalendarContent>
+  );
+
+  const currentTimeLine = showCurrentTime && engine ? (
+    <CurrentTimeLine
+      currentTime={currentTime}
+      viewportStart={engine.getViewportState().start}
+      pixelsPerMs={currentPixelsPerMs}
+      lineWidth={currentTimeLineWidth}
+      styles={styles}
+    />
+  ) : null;
 
   return (
     <TimelineContext.Provider value={contextValue}>
@@ -316,37 +377,54 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
         }}
         data-timeline-calendar
       >
-        <CalendarHeader
-          headerCells={headerCells}
-          classNames={classNames}
-          styles={styles}
-          renderHeaderCell={renderHeaderCell}
-          onHeaderCellClick={handleHeaderCellClick}
-          showNavigation={showNavigation}
-          onNavigateBackward={handleNavigateBackward}
-          onNavigateForward={handleNavigateForward}
-        />
-        <CalendarContent
-          gridLines={gridLines}
-          classNames={classNames}
-          styles={styles}
-          renderGridLine={renderGridLine}
-        >
-          {/* Availability overlay - renders behind content */}
-          {availability && <AvailabilityOverlay config={availability} />}
-
-          {children}
-        </CalendarContent>
-
-        {/* Current time line - spans entire calendar height */}
-        {showCurrentTime && engine && (
-          <CurrentTimeLine
-            currentTime={currentTime}
-            viewportStart={engine.getViewportState().start}
-            pixelsPerMs={currentPixelsPerMs}
-            lineWidth={currentTimeLineWidth}
-            styles={styles}
-          />
+        {sidebar ? (
+          <>
+            {/* Header row: sidebar header + calendar header */}
+            <div style={{ display: 'flex', flexShrink: 0 }}>
+              <div
+                style={{
+                  width: sidebar.width,
+                  flexShrink: 0,
+                  height: 'var(--timeline-header-height)',
+                  borderRight: '1px solid var(--timeline-header-border)',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {sidebar.headerContent}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {calendarHeader}
+              </div>
+            </div>
+            {/* Content row: sidebar body + calendar content */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              <div
+                ref={sidebarBodyRef}
+                style={{
+                  width: sidebar.width,
+                  flexShrink: 0,
+                  overflowY: 'hidden',
+                  borderRight: '1px solid var(--timeline-header-border)',
+                  boxSizing: 'border-box',
+                }}
+              >
+                {sidebar.content}
+              </div>
+              <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                {calendarContent}
+                {currentTimeLine}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {calendarHeader}
+            {calendarContent}
+            {currentTimeLine}
+          </>
         )}
       </div>
     </TimelineContext.Provider>

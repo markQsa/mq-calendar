@@ -159,6 +159,18 @@ export interface GridLineRenderParams {
 }
 
 /**
+ * Configuration for a fixed sidebar alongside the timeline
+ */
+export interface SidebarConfig {
+  /** Sidebar width in pixels */
+  width: number;
+  /** Content to render in the sidebar body (aligned with rows) */
+  content: ReactNode;
+  /** Optional content in the sidebar header area */
+  headerContent?: ReactNode;
+}
+
+/**
  * Props for TimelineCalendar component
  */
 export interface TimelineCalendarProps {
@@ -210,6 +222,8 @@ export interface TimelineCalendarProps {
   touchMomentum?: boolean;
   /** Deceleration rate for touch momentum (0-1, default: 0.95) */
   touchDecelerationRate?: number;
+  /** Sidebar configuration for fixed row labels */
+  sidebar?: SidebarConfig;
 }
 
 /**
