@@ -60,7 +60,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
           top: 0,
           left: 0,
           width: `${maxPosition}px`,
-          height: '100%',
+          height: `${minHeight}px`,
           pointerEvents: 'none'
         }}
         data-timeline-grid
@@ -111,7 +111,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
         style={{
           position: 'relative',
           width: '100%',
-          height: '100%',
+          minHeight: `${minHeight}px`,
           ...styles.contentInner
         }}
         data-timeline-content-inner
