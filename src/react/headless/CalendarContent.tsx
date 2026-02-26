@@ -1,7 +1,6 @@
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useRef, useState, useEffect } from 'react';
 import type { GridLine } from '../../core/types';
 import type { TimelineClassNames, TimelineStyles, GridLineRenderParams } from '../types';
-import { useTimelineRowGroup } from './TimelineRow';
 
 export interface CalendarContentProps {
   gridLines: GridLine[];
@@ -21,17 +20,35 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
   renderGridLine,
   children
 }) => {
-  // Get row group context to calculate content height
-  const rowGroupContext = useTimelineRowGroup();
-  const [minHeight, setMinHeight] = useState(200);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [svgHeight, setSvgHeight] = useState(0);
 
-  // Calculate minimum height needed for all rows whenever context changes
+  // Measure the scrollable content height so the SVG grid covers the entire
+  // area, including rows that are only visible after scrolling.
   useEffect(() => {
-    if (rowGroupContext) {
-      const height = rowGroupContext.getTotalHeight();
-      setMinHeight(height);
-    }
-  }, [rowGroupContext, rowGroupContext?.version]);
+    const el = containerRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const h = el.scrollHeight;
+      setSvgHeight(prev => (prev !== h ? h : prev));
+    };
+
+    measure();
+
+    // Re-measure when child elements are added/removed or repositioned
+    const mo = new MutationObserver(measure);
+    mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+
+    // Re-measure when the container itself resizes
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+
+    return () => {
+      mo.disconnect();
+      ro.disconnect();
+    };
+  }, []);
 
   // Find the maximum position to set viewBox width
   const maxPosition = gridLines.length > 0
@@ -40,6 +57,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
 
   return (
     <div
+      ref={containerRef}
       className={classNames.content}
       style={{
         position: 'relative',
@@ -48,7 +66,6 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
         overflowY: 'auto',
         background: 'var(--timeline-bg)',
         fontFamily: 'var(--timeline-content-font)',
-        minHeight: `${minHeight}px`,
         ...styles.content
       }}
       data-timeline-content
@@ -60,7 +77,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
           top: 0,
           left: 0,
           width: `${maxPosition}px`,
-          height: `${minHeight}px`,
+          height: svgHeight > 0 ? `${svgHeight}px` : '100%',
           pointerEvents: 'none'
         }}
         data-timeline-grid
@@ -111,7 +128,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
         style={{
           position: 'relative',
           width: '100%',
-          minHeight: `${minHeight}px`,
+          height: '100%',
           ...styles.contentInner
         }}
         data-timeline-content-inner
