@@ -47,7 +47,11 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const sidebarBodyRef = useRef<HTMLDivElement>(null);
-  const { width: containerWidth } = useResize(rootRef);
+  const { width: rootWidth } = useResize(rootRef);
+
+  // Subtract sidebar width so zoom is calculated for the calendar area only
+  const sidebarOffset = sidebar ? sidebar.width + 1 : 0; // +1 for border
+  const containerWidth = Math.max(0, rootWidth - sidebarOffset);
 
   // Resolve theme - either use preset name or custom object
   const resolvedTheme = useMemo<TimelineTheme>(() => {
