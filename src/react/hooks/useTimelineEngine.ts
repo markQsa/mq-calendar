@@ -33,6 +33,7 @@ export function useTimelineEngine(options: UseTimelineEngineOptions): UseTimelin
   const [refreshCounter, setRefreshCounter] = useState(0);
   const isInitializedRef = useRef(false);
   const prevDatesRef = useRef<{ start: number; end: number } | null>(null);
+  const prevContainerWidthRef = useRef(options.containerWidth);
 
   // Refresh grid lines and header cells
   const refresh = useCallback(() => {
@@ -71,6 +72,19 @@ export function useTimelineEngine(options: UseTimelineEngineOptions): UseTimelin
       isInitializedRef.current = true;
     }
   }, [options.containerWidth, options.minZoom, options.maxZoom, options.locale, options.startDate, options.endDate]);
+
+  // Re-fit zoom when container width changes (e.g. sidebar appears/disappears, window resize)
+  useEffect(() => {
+    if (!engineRef.current || !isInitializedRef.current || !prevDatesRef.current) return;
+    if (options.containerWidth <= 0) return;
+
+    if (prevContainerWidthRef.current !== options.containerWidth) {
+      engineRef.current.updateContainerWidth(options.containerWidth);
+      engineRef.current.zoomToRange(prevDatesRef.current.start, prevDatesRef.current.end);
+      prevContainerWidthRef.current = options.containerWidth;
+      refresh();
+    }
+  }, [options.containerWidth, refresh]);
 
   // Handle date range changes with animation
   useEffect(() => {

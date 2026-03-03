@@ -396,8 +396,22 @@ export interface TimelineRowProps {
    * Only called for visible items, dramatically improving performance.
    */
   renderItem?: (item: any, index: number) => ReactNode;
+  /** Decorative bars rendered at the bottom of the row (e.g., shift indicators) */
+  bottomBars?: BottomBar[];
   /** Children (typically TimelineItem components) - used when items/renderItem not provided */
   children?: ReactNode;
+}
+
+/**
+ * A decorative bar rendered at the bottom of a TimelineRow
+ */
+export interface BottomBar {
+  /** Start time of the bar */
+  startTime: TimeValue;
+  /** End time of the bar */
+  endTime: TimeValue;
+  /** Bar color */
+  color: string;
 }
 /**
  * Granularity for aggregating timeline items

@@ -307,6 +307,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   getAggregatedTypeStyle,
   items,
   renderItem,
+  bottomBars,
   children
 }) => {
   const groupContext = useTimelineRowGroup();
@@ -817,6 +818,38 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
               return child;
             })
           )}
+
+          {/* Bottom bars (e.g., shift indicators) */}
+          {bottomBars && bottomBars.length > 0 && engine && timeConverter && (() => {
+            const viewport = engine.getViewportState();
+            return bottomBars
+              .filter((bar) => {
+                const barStart = timeConverter.toTimestamp(bar.startTime);
+                const barEnd = timeConverter.toTimestamp(bar.endTime);
+                return barEnd >= viewport.start && barStart <= viewport.end;
+              })
+              .map((bar, i) => {
+                const barStartTs = timeConverter.toTimestamp(bar.startTime);
+                const barEndTs = timeConverter.toTimestamp(bar.endTime);
+                const left = engine.timeToPixel(barStartTs);
+                const width = engine.durationToPixels(barEndTs - barStartTs);
+                return (
+                  <div
+                    key={`bottom-bar-${i}`}
+                    style={{
+                      position: 'absolute',
+                      top: contentTop + contentHeight - 3,
+                      left,
+                      width,
+                      height: 3,
+                      backgroundColor: bar.color,
+                      pointerEvents: 'none',
+                      zIndex: 2,
+                    }}
+                  />
+                );
+              });
+          })()}
         </>
       )}
     </TimelineRowContext.Provider>

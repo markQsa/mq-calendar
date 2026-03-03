@@ -121,14 +121,6 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     enabled: showCurrentTime
   });
 
-  // Handle container resize
-  useEffect(() => {
-    if (engine && containerWidth > 0) {
-      engine.updateContainerWidth(containerWidth);
-      refresh();
-    }
-  }, [engine, containerWidth, refresh]);
-
   // Handle wheel events (scroll and zoom)
   useWheel(rootRef, {
     onWheel: (deltaX) => {
