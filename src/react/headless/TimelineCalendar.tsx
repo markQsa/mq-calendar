@@ -294,8 +294,11 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     }
   }, []);
 
+  const sidebarRef = useRef(sidebar);
+  sidebarRef.current = sidebar;
+
   useEffect(() => {
-    if (!sidebar) return;
+    if (!sidebarRef.current) return;
 
     // Find the [data-timeline-content] element inside the root
     const root = rootRef.current;
@@ -307,7 +310,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     return () => {
       contentEl.removeEventListener('scroll', handleContentScroll);
     };
-  }, [sidebar, handleContentScroll]);
+  }, [handleContentScroll]);
 
   // Context value
   const contextValue = useMemo(
