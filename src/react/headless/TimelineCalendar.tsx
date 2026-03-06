@@ -297,8 +297,12 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   const sidebarRef = useRef(sidebar);
   sidebarRef.current = sidebar;
 
+  // Track whether the scroll listener has been attached
+  const scrollListenerAttached = useRef(false);
+
   useEffect(() => {
     if (!sidebarRef.current) return;
+    if (scrollListenerAttached.current) return;
 
     // Find the [data-timeline-content] element inside the root
     const root = rootRef.current;
@@ -306,11 +310,13 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     const contentEl = root.querySelector('[data-timeline-content]');
     if (!contentEl) return;
 
+    scrollListenerAttached.current = true;
     contentEl.addEventListener('scroll', handleContentScroll);
     return () => {
+      scrollListenerAttached.current = false;
       contentEl.removeEventListener('scroll', handleContentScroll);
     };
-  }, [handleContentScroll]);
+  });
 
   // Context value
   const contextValue = useMemo(
