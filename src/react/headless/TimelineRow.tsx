@@ -838,7 +838,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
                     key={`bottom-bar-${i}`}
                     style={{
                       position: 'absolute',
-                      top: contentTop + contentHeight - 3,
+                      top: contentTop + contentHeight - 3 - (bar.layer || 0) * 4,
                       left,
                       width,
                       height: 3,

@@ -412,6 +412,8 @@ export interface BottomBar {
   endTime: TimeValue;
   /** Bar color */
   color: string;
+  /** Layer index for stacking multiple bar rows (default: 0). Layer 0 is at the bottom, layer 1 is above it. */
+  layer?: number;
 }
 /**
  * Granularity for aggregating timeline items
