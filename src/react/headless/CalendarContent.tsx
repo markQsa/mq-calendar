@@ -10,6 +10,34 @@ export interface CalendarContentProps {
   children?: ReactNode;
 }
 
+function measureAbsoluteContentHeight(root: HTMLElement): number {
+  const rootRect = root.getBoundingClientRect();
+  let maxBottom = 0;
+
+  const elements = root.querySelectorAll<HTMLElement>('*');
+
+  elements.forEach((element) => {
+    const computedStyle = getComputedStyle(element);
+
+    if (computedStyle.position !== 'absolute') {
+      return;
+    }
+
+    const styleTop = Number.parseFloat(computedStyle.top);
+    const styleHeight = Number.parseFloat(computedStyle.height);
+    const rectBottom = element.getBoundingClientRect().bottom - rootRect.top;
+    const styleBottom =
+      Number.isFinite(styleTop) && Number.isFinite(styleHeight)
+        ? styleTop + styleHeight
+        : 0;
+    const offsetBottom = element.offsetTop + element.offsetHeight;
+
+    maxBottom = Math.max(maxBottom, rectBottom, styleBottom, offsetBottom);
+  });
+
+  return maxBottom;
+}
+
 /**
  * Timeline content area with SVG grid lines and items
  */
@@ -21,17 +49,26 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
   children
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [svgHeight, setSvgHeight] = useState(0);
+  const contentInnerRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
 
   // Measure the scrollable content height so the SVG grid covers the entire
-  // area, including rows that are only visible after scrolling.
+  // area. The timeline uses absolute positioning heavily, so scrollHeight on
+  // its own can under-report the real height on smaller screens.
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    const innerEl = contentInnerRef.current;
+    if (!el || !innerEl) return;
 
     const measure = () => {
-      const h = el.scrollHeight;
-      setSvgHeight(prev => (prev !== h ? h : prev));
+      const h = Math.max(
+        el.clientHeight,
+        el.scrollHeight,
+        innerEl.clientHeight,
+        innerEl.scrollHeight,
+        measureAbsoluteContentHeight(innerEl)
+      );
+      setContentHeight(prev => (prev !== h ? h : prev));
     };
 
     measure();
@@ -43,6 +80,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
     // Re-measure when the container itself resizes
     const ro = new ResizeObserver(measure);
     ro.observe(el);
+    ro.observe(innerEl);
 
     return () => {
       mo.disconnect();
@@ -77,7 +115,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
           top: 0,
           left: 0,
           width: `${maxPosition}px`,
-          height: svgHeight > 0 ? `${svgHeight}px` : '100%',
+          height: contentHeight > 0 ? `${contentHeight}px` : '100%',
           pointerEvents: 'none'
         }}
         data-timeline-grid
@@ -124,11 +162,13 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
 
       {/* Content layer */}
       <div
+        ref={contentInnerRef}
         className={classNames.contentInner}
         style={{
           position: 'relative',
           width: '100%',
           height: '100%',
+          minHeight: contentHeight > 0 ? `${contentHeight}px` : '100%',
           ...styles.contentInner
         }}
         data-timeline-content-inner
