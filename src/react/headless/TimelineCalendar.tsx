@@ -43,6 +43,8 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   animationDuration = 500,
   touchMomentum = true,
   touchDecelerationRate = 0.95,
+  touchSnap = false,
+  touchSnapDuration = 200,
   sidebar
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -157,10 +159,27 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     }
   });
 
+  // Handle snap-to-grid after touch scroll ends
+  const handleTouchScrollEnd = useCallback(() => {
+    if (!touchSnap || !engine) return;
+
+    engine.snapToGrid(touchSnapDuration, () => {
+      refresh();
+
+      if (onViewportChange) {
+        const viewport = engine.getViewportState();
+        onViewportChange(new Date(viewport.start), new Date(viewport.end));
+      }
+    });
+  }, [touchSnap, touchSnapDuration, engine, refresh, onViewportChange]);
+
   // Handle touch events (scroll and pinch-to-zoom with momentum)
   useTouch(rootRef, {
     onScroll: (deltaX) => {
       if (!engine) return;
+
+      // Cancel any ongoing snap animation when user starts scrolling
+      engine.cancelAnimation();
 
       engine.scroll(deltaX);
       refresh();
@@ -187,7 +206,8 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
       }
     },
     momentum: touchMomentum,
-    decelerationRate: touchDecelerationRate
+    decelerationRate: touchDecelerationRate,
+    onTouchScrollEnd: handleTouchScrollEnd
   });
 
 

@@ -11,7 +11,7 @@ import { ZoomController, type ZoomControllerConfig } from './ZoomController';
 import { ScrollController } from './ScrollController';
 import { GridCalculator, type GridCalculatorConfig } from './GridCalculator';
 import { TimeConverter } from './TimeConverter';
-import { addTime } from '../utils/dateUtils';
+import { addTime, getStartOf } from '../utils/dateUtils';
 
 /**
  * Main engine that orchestrates all timeline operations
@@ -422,7 +422,7 @@ export class TimelineEngine {
   /**
    * Smoothly animate a scroll by a time delta
    */
-  private animateScroll(timeDelta: number, duration: number = 300, onUpdate?: () => void): Promise<void> {
+  animateScroll(timeDelta: number, duration: number = 300, onUpdate?: () => void): Promise<void> {
     return new Promise((resolve) => {
       const startViewportStart = this.viewportState.start;
       const startViewportEnd = this.viewportState.end;
@@ -466,6 +466,44 @@ export class TimelineEngine {
 
       this.animationFrame = requestAnimationFrame(animate);
     });
+  }
+
+  /**
+   * Cancel any running scroll/zoom animation
+   */
+  cancelAnimation(): void {
+    if (this.animationFrame !== null) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+  }
+
+  /**
+   * Snap the viewport to the nearest time grid boundary
+   */
+  snapToGrid(duration: number = 200, onUpdate?: () => void): Promise<void> {
+    const unit = this.getSmallestVisibleTimeUnit();
+    if (!unit) return Promise.resolve();
+
+    const viewportStart = new Date(this.viewportState.start);
+
+    // Get the previous boundary (floor)
+    const prevBoundary = getStartOf(viewportStart, unit);
+    // Get the next boundary
+    const nextBoundary = addTime(prevBoundary, 1, unit);
+
+    const prevDelta = this.viewportState.start - prevBoundary.getTime();
+    const nextDelta = nextBoundary.getTime() - this.viewportState.start;
+
+    // Pick whichever boundary is closer
+    const timeDelta = prevDelta <= nextDelta
+      ? -prevDelta   // snap backward to previous boundary
+      : nextDelta;   // snap forward to next boundary
+
+    // Skip if already very close to a boundary (< 1ms)
+    if (Math.abs(timeDelta) < 1) return Promise.resolve();
+
+    return this.animateScroll(timeDelta, duration, onUpdate);
   }
 
   /**

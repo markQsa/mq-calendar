@@ -13,6 +13,8 @@ export interface UseTouchOptions {
   onMomentumStart?: () => void;
   /** Called when momentum scrolling ends */
   onMomentumEnd?: () => void;
+  /** Called when the entire touch scroll gesture is complete (after momentum finishes, or immediately if no momentum) */
+  onTouchScrollEnd?: () => void;
 }
 
 interface TouchState {
@@ -61,7 +63,8 @@ export function useTouch(
     momentum = true,
     decelerationRate = 0.95,
     onMomentumStart,
-    onMomentumEnd
+    onMomentumEnd,
+    onTouchScrollEnd
   } = options;
 
   // Use refs for callbacks to avoid re-attaching listeners
@@ -69,10 +72,12 @@ export function useTouch(
   const onZoomRef = useRef(onZoom);
   const onMomentumStartRef = useRef(onMomentumStart);
   const onMomentumEndRef = useRef(onMomentumEnd);
+  const onTouchScrollEndRef = useRef(onTouchScrollEnd);
   onScrollRef.current = onScroll;
   onZoomRef.current = onZoom;
   onMomentumStartRef.current = onMomentumStart;
   onMomentumEndRef.current = onMomentumEnd;
+  onTouchScrollEndRef.current = onTouchScrollEnd;
 
   const momentumRafRef = useRef<number | null>(null);
 
@@ -102,8 +107,8 @@ export function useTouch(
       }
     };
 
-    const startMomentum = (velocityPxPerMs: number) => {
-      if (!momentum || Math.abs(velocityPxPerMs) < 0.1) return;
+    const startMomentum = (velocityPxPerMs: number): boolean => {
+      if (!momentum || Math.abs(velocityPxPerMs) < 0.1) return false;
 
       let velocity = velocityPxPerMs;
       let lastFrameTime = performance.now();
@@ -121,6 +126,7 @@ export function useTouch(
         if (Math.abs(velocity) < 0.05) {
           momentumRafRef.current = null;
           onMomentumEndRef.current?.();
+          onTouchScrollEndRef.current?.();
           return;
         }
 
@@ -132,6 +138,7 @@ export function useTouch(
       };
 
       momentumRafRef.current = requestAnimationFrame(tick);
+      return true;
     };
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -234,7 +241,10 @@ export function useTouch(
     const handleTouchEnd = (e: TouchEvent) => {
       if (e.touches.length === 0) {
         // All touches ended - compute velocity and start momentum
-        if (touchState.isScrolling && momentum) {
+        let momentumStarted = false;
+        const wasScrolling = touchState.isScrolling;
+
+        if (wasScrolling && momentum) {
           const now = performance.now();
           // Use samples within last 100ms
           const recentSamples = velocitySamples.filter(s => now - s.timestamp < 100);
@@ -245,9 +255,14 @@ export function useTouch(
 
             if (timeSpan > 0) {
               const velocityPxPerMs = totalDeltaX / timeSpan;
-              startMomentum(velocityPxPerMs);
+              momentumStarted = startMomentum(velocityPxPerMs);
             }
           }
+        }
+
+        // If we were scrolling but momentum didn't start, fire onTouchScrollEnd immediately
+        if (wasScrolling && !momentumStarted) {
+          onTouchScrollEndRef.current?.();
         }
 
         touchState.isScrolling = false;

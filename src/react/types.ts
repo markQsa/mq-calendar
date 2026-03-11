@@ -222,6 +222,10 @@ export interface TimelineCalendarProps {
   touchMomentum?: boolean;
   /** Deceleration rate for touch momentum (0-1, default: 0.95) */
   touchDecelerationRate?: number;
+  /** Enable snap-to-grid after touch swipe (default: false) */
+  touchSnap?: boolean;
+  /** Duration of snap animation in milliseconds (default: 200) */
+  touchSnapDuration?: number;
   /** Sidebar configuration for fixed row labels */
   sidebar?: SidebarConfig;
 }
