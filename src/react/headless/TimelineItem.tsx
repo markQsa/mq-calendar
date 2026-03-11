@@ -45,11 +45,13 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [draggedTimestamp, setDraggedTimestamp] = useState<number | null>(null);
   const [draggedRow, setDraggedRow] = useState<number | null>(null);
+  const [draggedTopPixels, setDraggedTopPixels] = useState<number | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; startTimestamp: number; startRow: number; rowOffset: number; rowGroupId: string | undefined } | null>(null);
   const currentDraggedTimestamp = useRef<number | null>(null);
   const currentDraggedRow = useRef<number | null>(null);
   const currentDraggedRowGroupId = useRef<string | undefined>(undefined);
-  const dragMode = useRef<'horizontal' | 'vertical' | null>(null);
+  const dragMode = useRef<'horizontal' | 'vertical' | 'free' | null>(null);
+  const contentRelativeStartY = useRef<number>(0);
 
   // Helper to calculate end timestamp for drag tracking
   const calculateEndTimestamp = (startTimestamp: number): number => {
@@ -66,11 +68,11 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   // Helper to convert absolute row to relative row within container
   const absoluteToRelativeRow = (absoluteRow: number): number => {
     if (!rowContext) return absoluteRow;
-    const rowHeightPx = rowContext.rowHeight || parseInt(getComputedStyle(document.documentElement)
+    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
     const headerHeight = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-header-height') || '40');
-    const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
+    const headerRows = (rowContext.collapsible) ? headerHeight / defaultHeight : 0;
     const containerStartRow = rowContext.startRow + headerRows;
     return absoluteRow - containerStartRow;
   };
@@ -79,22 +81,25 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   const { left, width, isVisible, isAutoWidth } = useMemo(() => {
     if (!engine) return { left: 0, width: 0, isVisible: false, isAutoWidth: false };
 
+    const originalTimestamp = timeConverter.toTimestamp(startTime);
+
     // Use dragged timestamp while dragging, otherwise use the prop
     const effectiveTimestamp = isDragging && draggedTimestamp !== null
       ? draggedTimestamp
-      : timeConverter.toTimestamp(startTime);
+      : originalTimestamp;
 
     const startTimestamp = effectiveTimestamp;
 
     // Calculate duration (if provided)
+    // During drag, preserve original duration so the item moves as a whole block
     let durationMs: number | null = null;
     let itemEndTimestamp: number;
 
     if (endTime) {
-      // If endTime is provided, calculate duration from start to end
+      // If endTime is provided, calculate duration from original start to end
       const endTimestamp = timeConverter.toTimestamp(endTime);
-      durationMs = endTimestamp - startTimestamp;
-      itemEndTimestamp = endTimestamp;
+      durationMs = endTimestamp - originalTimestamp;
+      itemEndTimestamp = startTimestamp + durationMs;
     } else if (duration !== undefined) {
       // Parse duration (supports both numbers and human-readable strings)
       durationMs = timeConverter.parseDuration?.(duration) ?? (typeof duration === 'number' ? duration : 0);
@@ -124,23 +129,30 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   }, [engine, timeConverter, startTime, duration, endTime, refreshCounter, isDragging, draggedTimestamp]);
 
   const top = useMemo(() => {
+    // During cross-row drag, use the absolute pixel override
+    if (isDragging && draggedTopPixels !== null) {
+      return draggedTopPixels;
+    }
+
     const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height') || '60');
+    const defaultHeightPx = parseInt(getComputedStyle(document.documentElement)
       .getPropertyValue('--timeline-row-height') || '60');
 
     // Use dragged row while dragging vertically, otherwise use the prop
     const effectiveRow = isDragging && draggedRow !== null ? draggedRow : row;
 
     // Account for parent TimelineRow's starting position and header rows
-    let absoluteRow = effectiveRow;
+    // startRow is in "row units" based on defaultHeight, so convert to pixels using defaultHeight
+    // then add the item's position within the row using the row's actual height
+    let baseTop = effectiveRow * rowHeightPx;
     if (rowContext) {
       const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
-      const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
-      const containerStartRow = rowContext.startRow + headerRows;
-      absoluteRow = containerStartRow + effectiveRow;
+        .getPropertyValue('--timeline-row-header-height') || '40');
+      const containerStartPixels = rowContext.startRow * defaultHeightPx;
+      const headerPixels = rowContext.collapsible ? headerHeight : 0;
+      baseTop = containerStartPixels + headerPixels + effectiveRow * rowHeightPx;
     }
-
-    const baseTop = absoluteRow * rowHeightPx;
 
     // Get real-time subRow assignment (for dynamic overlap during drag)
     const currentAssignment = rowContext?.getSubRowAssignment?.(idRef.current);
@@ -154,7 +166,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
     }
 
     return baseTop;
-  }, [row, subRow, subRowCount, isDragging, draggedRow, rowContext, rowContext?.subRowAssignmentsVersion, rowContext?.rowHeight]);
+  }, [row, subRow, subRowCount, isDragging, draggedRow, draggedTopPixels, rowContext, rowContext?.subRowAssignmentsVersion, rowContext?.rowHeight]);
 
   const height = useMemo(() => {
     const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
@@ -172,7 +184,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
     }
 
     // Default height with margins
-    return 'calc(var(--timeline-row-height) - 8px)';
+    return `${rowHeightPx - 8}px`;
   }, [subRowCount, rowContext, rowContext?.subRowAssignmentsVersion]);
 
   // Calculate transform based on alignment
@@ -238,12 +250,24 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
       if (!dragStarted) {
         dragStarted = true;
 
-        // Determine drag mode based on initial movement direction
-        if (allowRowChange && Math.abs(deltaY) > Math.abs(deltaX)) {
-          // Vertical drag (row change)
-          dragMode.current = 'vertical';
+        // Determine drag mode based on allowRowChange
+        if (allowRowChange) {
+          // Free drag - both time and row changes
+          dragMode.current = 'free';
+
+          // Calculate content-relative Y for the item's current position
+          const groupContext = timelineRowGroupContext || collapsibleRowGroupContext;
+          const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+            .getPropertyValue('--timeline-row-height') || '60');
+          if (groupContext?.getCalculatedPosition && rowContext) {
+            const groupStartRowUnits = groupContext.getCalculatedPosition(rowContext.id);
+            const headerHeight = parseInt(getComputedStyle(document.documentElement)
+              .getPropertyValue('--timeline-row-header-height') || '40');
+            const headerPx = rowContext.collapsible ? headerHeight : 0;
+            contentRelativeStartY.current = groupStartRowUnits * defaultHeight + headerPx + row * (rowContext.rowHeight || defaultHeight);
+          }
         } else {
-          // Horizontal drag (time change)
+          // Horizontal drag (time change only)
           dragMode.current = 'horizontal';
         }
 
@@ -282,6 +306,58 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         }
 
         onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!), currentDraggedRowGroupId.current);
+      } else if (dragMode.current === 'free') {
+        // Free drag - both time and row changes simultaneously
+        const pixelsPerMs = engine.getZoomState().pixelsPerMs;
+        const deltaTimeMs = deltaX / pixelsPerMs;
+        const rawTimestamp = dragStartRef.current.startTimestamp + deltaTimeMs;
+        const snappedTimestamp = snapToInterval(rawTimestamp);
+
+        currentDraggedTimestamp.current = snappedTimestamp;
+        setDraggedTimestamp(snappedTimestamp);
+
+        // Determine target row from vertical movement
+        const groupContext = timelineRowGroupContext || collapsibleRowGroupContext;
+        const defaultHeight = parseInt(getComputedStyle(document.documentElement)
+          .getPropertyValue('--timeline-row-height') || '60');
+
+        if (groupContext?.getRowAtPixelY) {
+          const contentCurrentY = contentRelativeStartY.current + deltaY;
+          const rowInfo = groupContext.getRowAtPixelY(contentCurrentY);
+
+          if (rowInfo && !rowInfo.isInHeader) {
+            const targetRowGroupId = rowInfo.rowId;
+
+            // Calculate the target row's absolute pixel top from group context
+            if (groupContext.getCalculatedPosition) {
+              const targetStartRowUnits = groupContext.getCalculatedPosition(targetRowGroupId);
+              const targetRowState = groupContext.getRowState?.(targetRowGroupId);
+              const targetIsCollapsible = targetRowState && 'collapsible' in targetRowState && targetRowState.collapsible;
+              const targetHeaderPx = targetIsCollapsible
+                ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--timeline-row-header-height') || '40')
+                : 0;
+              const targetRowHeight = targetRowState?.rowHeight || defaultHeight;
+              const targetTopPixels = targetStartRowUnits * defaultHeight + targetHeaderPx + rowInfo.relativeRow * targetRowHeight;
+
+              setDraggedTopPixels(targetTopPixels);
+            }
+
+            // Track row group change
+            if (targetRowGroupId !== currentDraggedRowGroupId.current) {
+              const oldRowGroupId = currentDraggedRowGroupId.current;
+              currentDraggedRowGroupId.current = targetRowGroupId;
+              onRowChange?.(rowInfo.relativeRow, absoluteToRelativeRow(currentDraggedRow.current!), targetRowGroupId, oldRowGroupId);
+            }
+
+            // Update drag tracking
+            if (rowContext?.registerDraggedItem) {
+              const endTimestamp = calculateEndTimestamp(snappedTimestamp);
+              rowContext.registerDraggedItem(idRef.current, snappedTimestamp, endTimestamp, rowInfo.relativeRow);
+            }
+
+            onDrag?.(snappedTimestamp, rowInfo.relativeRow, targetRowGroupId);
+          }
+        }
       } else if (dragMode.current === 'vertical') {
         // Vertical drag - change row only with midpoint threshold
         const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
@@ -407,10 +483,12 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         setIsDragging(false);
         setDraggedTimestamp(null);
         setDraggedRow(null);
+        setDraggedTopPixels(null);
         currentDraggedTimestamp.current = null;
         currentDraggedRow.current = null;
         currentDraggedRowGroupId.current = undefined;
         dragMode.current = null;
+        contentRelativeStartY.current = 0;
 
         onDragEnd?.(finalTimestamp, originalTimestamp, absoluteToRelativeRow(finalRow), absoluteToRelativeRow(originalRow), finalRowGroupId, originalRowGroupId);
       }
