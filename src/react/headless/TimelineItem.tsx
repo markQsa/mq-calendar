@@ -250,9 +250,9 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
       if (!dragStarted) {
         dragStarted = true;
 
-        // Determine drag mode based on allowRowChange
-        if (allowRowChange) {
-          // Free drag - both time and row changes
+        // Determine drag mode based on allowRowChange and initial direction
+        if (allowRowChange && Math.abs(deltaY) > Math.abs(deltaX)) {
+          // Vertical drag — cross-row assignment (no time change)
           dragMode.current = 'free';
 
           // Calculate content-relative Y for the item's current position
@@ -307,16 +307,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 
         onDrag?.(snappedTimestamp, absoluteToRelativeRow(currentDraggedRow.current!), currentDraggedRowGroupId.current);
       } else if (dragMode.current === 'free') {
-        // Free drag - both time and row changes simultaneously
-        const pixelsPerMs = engine.getZoomState().pixelsPerMs;
-        const deltaTimeMs = deltaX / pixelsPerMs;
-        const rawTimestamp = dragStartRef.current.startTimestamp + deltaTimeMs;
-        const snappedTimestamp = snapToInterval(rawTimestamp);
-
-        currentDraggedTimestamp.current = snappedTimestamp;
-        setDraggedTimestamp(snappedTimestamp);
-
-        // Determine target row from vertical movement
+        // Cross-row drag — vertical only, time stays fixed
         const groupContext = timelineRowGroupContext || collapsibleRowGroupContext;
         const defaultHeight = parseInt(getComputedStyle(document.documentElement)
           .getPropertyValue('--timeline-row-height') || '60');
@@ -349,13 +340,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
               onRowChange?.(rowInfo.relativeRow, absoluteToRelativeRow(currentDraggedRow.current!), targetRowGroupId, oldRowGroupId);
             }
 
-            // Update drag tracking
-            if (rowContext?.registerDraggedItem) {
-              const endTimestamp = calculateEndTimestamp(snappedTimestamp);
-              rowContext.registerDraggedItem(idRef.current, snappedTimestamp, endTimestamp, rowInfo.relativeRow);
-            }
-
-            onDrag?.(snappedTimestamp, rowInfo.relativeRow, targetRowGroupId);
+            onDrag?.(currentDraggedTimestamp.current!, rowInfo.relativeRow, targetRowGroupId);
           }
         }
       } else if (dragMode.current === 'vertical') {
