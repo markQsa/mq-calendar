@@ -52,6 +52,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   const currentDraggedRowGroupId = useRef<string | undefined>(undefined);
   const dragMode = useRef<'horizontal' | 'vertical' | 'free' | null>(null);
   const contentRelativeStartY = useRef<number>(0);
+  const justDraggedRef = useRef(false);
 
   // Helper to calculate end timestamp for drag tracking
   const calculateEndTimestamp = (startTimestamp: number): number => {
@@ -476,6 +477,10 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         contentRelativeStartY.current = 0;
 
         onDragEnd?.(finalTimestamp, originalTimestamp, absoluteToRelativeRow(finalRow), absoluteToRelativeRow(originalRow), finalRowGroupId, originalRowGroupId);
+
+        // Suppress the click event that follows mouseup after a drag
+        justDraggedRef.current = true;
+        requestAnimationFrame(() => { justDraggedRef.current = false; });
       }
 
       dragStartRef.current = null;
@@ -522,6 +527,12 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         data-row={row}
         data-width={isAutoWidth ? 'auto' : width}
         onMouseDown={handleMouseDown}
+        onClickCapture={(e) => {
+          if (justDraggedRef.current) {
+            e.stopPropagation();
+            e.preventDefault();
+          }
+        }}
       >
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
