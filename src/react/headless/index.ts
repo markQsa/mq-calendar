@@ -20,3 +20,13 @@ export {
   useTimelineRowGroup
 } from './TimelineRow';
 export { TimelinePinpoint, TimelinePinpointGroup } from './TimelinePinpoint';
+export { DayCalendar } from './DayCalendar';
+export type {
+  DayCalendarProps,
+  DayCalendarClassNames,
+  DayCalendarStyles,
+  DayCalendarRenderEventParams,
+  DayCalendarNavigationLabels,
+  Mechanic,
+  ScheduleEvent,
+} from './DayCalendar';
