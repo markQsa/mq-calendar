@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-12
+
+### Added
+
+- New `<DayCalendar>` component: vertical day-view scheduler with mechanic
+  columns, opening-hours-constrained time axis, side-by-side layout for
+  overlapping events, current-time line, and `onSlotClick` / `onEventClick`
+  handlers
+- Optional `showNavigation` toolbar on `<DayCalendar>` with prev / today /
+  next buttons and a localized date label; component stays controlled via
+  `onDateChange`
+- Override points on `<DayCalendar>`: `renderEvent`, `renderMechanicHeader`,
+  `renderTimeLabel`, `renderDateLabel`, plus `navigationLabels`
+- New helper `openingHoursRangeForDate(date, availability)` exported from
+  `mq-timeline-calendar/react` — derives the visible hour range as the union
+  of all ranges that apply to the target day across `weekly`, `simple`, and
+  `specific` sources
+- New exported types: `DayCalendarProps`, `DayCalendarClassNames`,
+  `DayCalendarStyles`, `DayCalendarRenderEventParams`,
+  `DayCalendarNavigationLabels`, `Mechanic`, `ScheduleEvent`,
+  `OpeningHoursRange`
+
+### Notes
+
+- `<DayCalendar>` is independent of `<TimelineCalendar>` (no shared engine)
+  but reuses `AvailabilityConfig`, themes, and the `useCurrentTime` hook
+- Drag & drop and week view are intentionally out of scope for this release
+  and tracked as follow-ups
+
 ## [0.2.0] - 2025-12-10
 
 ### Added
