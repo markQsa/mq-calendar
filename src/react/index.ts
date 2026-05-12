@@ -9,6 +9,10 @@ export * from './hooks';
 // Export utility functions for zoom configuration
 export { timeSpanToZoom } from '../utils/dateUtils';
 
+// Export opening-hours range helper (used by DayCalendar)
+export type { OpeningHoursRange } from '../utils/openingHoursRange';
+export { openingHoursRangeForDate } from '../utils/openingHoursRange';
+
 // Export aggregation utilities
 export type { TimelineItemData as AggregationItemData, AggregatedPeriod as AggregatedPeriodData } from '../utils/aggregationUtils';
 export {

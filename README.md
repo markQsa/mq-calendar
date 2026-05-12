@@ -336,6 +336,119 @@ Show available and unavailable time periods:
 >
 ```
 
+## Day Calendar (vertical day view)
+
+`<DayCalendar>` is a separate component that renders a traditional day-planner
+view: time runs on the Y-axis (constrained to opening hours derived from
+`AvailabilityConfig`), and a list of mechanics (or any resources) is rendered
+as columns. Use this when `<TimelineCalendar>`'s horizontal layout isn't a
+fit — e.g., shop-floor "who's working on what today".
+
+### Basic Usage
+
+```tsx
+import { DayCalendar } from 'mq-timeline-calendar/react';
+
+const mechanics = [
+  { id: 'm1', name: 'Mikko' },
+  { id: 'm2', name: 'Pekka' },
+  { id: 'm3', name: 'Anna' },
+];
+
+const events = [
+  {
+    id: 'e1',
+    mechanicId: 'm1',
+    startTime: '2026-05-11T09:00:00',
+    endTime:   '2026-05-11T10:30:00',
+    title: 'Öljynvaihto',
+    color: '#3b82f6',
+  },
+  {
+    id: 'e2',
+    mechanicId: 'm2',
+    startTime: '2026-05-11T10:00:00',
+    endTime:   '2026-05-11T12:00:00',
+    title: 'Jarruhuolto',
+  },
+];
+
+<DayCalendar
+  date={new Date('2026-05-11')}
+  mechanics={mechanics}
+  events={events}
+  availability={{
+    weekly: {
+      1: [{ start: '08:00', end: '17:30' }],
+      2: [{ start: '08:00', end: '17:30' }],
+      3: [{ start: '08:00', end: '17:30' }],
+      4: [{ start: '08:00', end: '17:30' }],
+      5: [{ start: '08:00', end: '15:00' }],
+    },
+  }}
+  slotMinutes={30}
+  height="600px"
+  showCurrentTime
+  onSlotClick={(mechanicId, datetime) => console.log('new slot:', mechanicId, datetime)}
+  onEventClick={(eventId, event) => console.log('event clicked:', eventId, event)}
+/>
+```
+
+### Behavior
+
+- **Visible time range** is the union of all ranges for the target day across
+  `weekly`, `simple`, and `specific` in `availability`. Falls back to
+  `00:00–24:00` when no config is provided.
+- **Slot grid** is `slotMinutes` wide (default 30). Range bounds snap to slot
+  boundaries.
+- **Events** are absolute-positioned inside their mechanic column. Events that
+  span outside opening hours are clipped to the visible range. Events that
+  fall entirely outside are not rendered.
+- **Overlapping events** in the same mechanic column lay out side-by-side
+  using the same `assignSubRows` helper as `<TimelineCalendar>`.
+- **Current-time line** (when `showCurrentTime`) shows a horizontal line
+  across all mechanic columns when the current time falls within the visible
+  range.
+
+### DayCalendar Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `date` | `TimeValue` | required | Target day to display |
+| `mechanics` | `Mechanic[]` | required | Columns. `{ id, name, color? }` |
+| `events` | `ScheduleEvent[]` | `[]` | `{ id, mechanicId, startTime, endTime, title?, color?, data? }` |
+| `availability` | `AvailabilityConfig` | - | Same shape as `<TimelineCalendar>` — drives the visible hour range |
+| `slotMinutes` | `number` | `30` | Slot granularity |
+| `width` | `string \| number` | `'100%'` | Container width |
+| `height` | `string \| number` | `'600px'` | Container height |
+| `timeColumnWidth` | `number` | `60` | Time column width in px |
+| `slotHeight` | `number` | `40` | Slot row height in px |
+| `minColumnWidth` | `number` | `100` | Min mechanic column width (triggers horizontal scroll) |
+| `theme` | `'light' \| 'dark' \| 'compact' \| 'compact-dark' \| TimelineTheme` | `'light'` | Reused from `<TimelineCalendar>` |
+| `showCurrentTime` | `boolean` | `false` | Show current-time line |
+| `onSlotClick` | `(mechanicId, datetime) => void` | - | Fired with the slot's start datetime |
+| `onEventClick` | `(eventId, event) => void` | - | Fired when an event is clicked |
+| `renderEvent` | `(params) => ReactNode` | - | Custom event renderer; receives `{ event, top, height, left, width }` (`left`/`width` are percentages) |
+| `renderMechanicHeader` | `(mechanic) => ReactNode` | - | Custom mechanic header cell |
+| `renderTimeLabel` | `(time: Date) => ReactNode` | - | Custom time-column label |
+
+### Differences from `<TimelineCalendar>`
+
+| | `<TimelineCalendar>` | `<DayCalendar>` |
+|--|--|--|
+| Time axis | Horizontal (X) | Vertical (Y) |
+| Zoom / scroll | Continuous (mouse wheel, pinch) | Native scroll, fixed slot size |
+| Range | Multi-day / multi-year | Single day |
+| Rows / columns | Many rows of any height | N mechanic columns |
+| Children API | `<TimelineItem>` children | `events` prop |
+| Drag & drop | Built-in | Not yet (planned) |
+
+### Not yet supported
+
+- Drag & drop (move event in time or between mechanics)
+- Week view
+- Resizing events
+
 ## Pinpoint Markers
 
 Display point-in-time markers (milestones, events, deadlines) with automatic clustering when markers are too close together.
