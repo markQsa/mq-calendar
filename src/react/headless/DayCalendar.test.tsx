@@ -193,6 +193,36 @@ describe('DayCalendar', () => {
     expect(queryByText('Too early')).toBeNull();
   });
 
+  it('shows navigation bar with prev/today/next that fire onDateChange', () => {
+    const onDateChange = vi.fn();
+    const { getByText, getByLabelText, container } = render(
+      <DayCalendar
+        date={targetDate}
+        mechanics={mechanics}
+        availability={availability}
+        showNavigation
+        onDateChange={onDateChange}
+        navigationLabels={{ today: 'Tänään' }}
+      />
+    );
+
+    expect(container.querySelector('[data-day-calendar-navigation]')).toBeTruthy();
+
+    fireEvent.click(getByLabelText('Previous day'));
+    expect(onDateChange).toHaveBeenLastCalledWith(expect.any(Date));
+    expect((onDateChange.mock.calls[0][0] as Date).getDate()).toBe(10); // 2026-05-10
+
+    fireEvent.click(getByLabelText('Next day'));
+    expect((onDateChange.mock.calls[1][0] as Date).getDate()).toBe(12); // 2026-05-12
+
+    fireEvent.click(getByText('Tänään'));
+    const todayCallArg = onDateChange.mock.calls[2][0] as Date;
+    const now = new Date();
+    expect(todayCallArg.getFullYear()).toBe(now.getFullYear());
+    expect(todayCallArg.getMonth()).toBe(now.getMonth());
+    expect(todayCallArg.getDate()).toBe(now.getDate());
+  });
+
   it('uses custom renderEvent when provided', () => {
     const events: ScheduleEvent[] = [
       {

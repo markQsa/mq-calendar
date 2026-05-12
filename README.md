@@ -409,6 +409,9 @@ const events = [
 - **Current-time line** (when `showCurrentTime`) shows a horizontal line
   across all mechanic columns when the current time falls within the visible
   range.
+- **Navigation** (when `showNavigation`) renders a prev / today / next
+  toolbar with a localized date label. `<DayCalendar>` is controlled — wire
+  `onDateChange` to your `date` state.
 
 ### DayCalendar Props
 
@@ -426,6 +429,10 @@ const events = [
 | `minColumnWidth` | `number` | `100` | Min mechanic column width (triggers horizontal scroll) |
 | `theme` | `'light' \| 'dark' \| 'compact' \| 'compact-dark' \| TimelineTheme` | `'light'` | Reused from `<TimelineCalendar>` |
 | `showCurrentTime` | `boolean` | `false` | Show current-time line |
+| `showNavigation` | `boolean` | `false` | Render prev / today / next toolbar |
+| `navigationLabels` | `{ previous?, today?, next? }` | - | Override toolbar button labels |
+| `onDateChange` | `(newDate: Date) => void` | - | Required when `showNavigation` — receives the new target day |
+| `renderDateLabel` | `(date: Date) => ReactNode` | - | Custom date label in the toolbar |
 | `onSlotClick` | `(mechanicId, datetime) => void` | - | Fired with the slot's start datetime |
 | `onEventClick` | `(eventId, event) => void` | - | Fired when an event is clicked |
 | `renderEvent` | `(params) => ReactNode` | - | Custom event renderer; receives `{ event, top, height, left, width }` (`left`/`width` are percentages) |

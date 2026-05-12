@@ -36,6 +36,9 @@ export interface DayCalendarRenderEventParams {
 
 export interface DayCalendarClassNames {
   root?: string;
+  navigation?: string;
+  navigationButton?: string;
+  navigationLabel?: string;
   header?: string;
   headerCell?: string;
   timeColumn?: string;
@@ -48,6 +51,9 @@ export interface DayCalendarClassNames {
 
 export interface DayCalendarStyles {
   root?: CSSProperties;
+  navigation?: CSSProperties;
+  navigationButton?: CSSProperties;
+  navigationLabel?: CSSProperties;
   header?: CSSProperties;
   headerCell?: CSSProperties;
   timeColumn?: CSSProperties;
@@ -56,6 +62,15 @@ export interface DayCalendarStyles {
   slot?: CSSProperties;
   event?: CSSProperties;
   currentTimeLine?: CSSProperties;
+}
+
+export interface DayCalendarNavigationLabels {
+  /** Previous-day button label/icon (default: ←) */
+  previous?: ReactNode;
+  /** Today button label (default: 'Today') */
+  today?: ReactNode;
+  /** Next-day button label/icon (default: →) */
+  next?: ReactNode;
 }
 
 export interface DayCalendarProps {
@@ -85,6 +100,14 @@ export interface DayCalendarProps {
   locale?: CalendarLocale;
   /** Show current-time line (default: false) */
   showCurrentTime?: boolean;
+  /** Show prev/today/next navigation bar (default: false). Requires `onDateChange`. */
+  showNavigation?: boolean;
+  /** Optional labels for the navigation buttons */
+  navigationLabels?: DayCalendarNavigationLabels;
+  /** Called when the user clicks prev / today / next. Component is controlled — wire this to state. */
+  onDateChange?: (newDate: Date) => void;
+  /** Custom renderer for the date label in the navigation bar */
+  renderDateLabel?: (date: Date) => ReactNode;
   /** Click handler for an empty slot — datetime snapped to slot start */
   onSlotClick?: (mechanicId: string, datetime: Date) => void;
   /** Click handler for an event */
@@ -142,7 +165,12 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
   slotHeight = 40,
   minColumnWidth = 100,
   theme = 'light',
+  locale,
   showCurrentTime = false,
+  showNavigation = false,
+  navigationLabels,
+  onDateChange,
+  renderDateLabel,
   onSlotClick,
   onEventClick,
   renderEvent,
@@ -256,6 +284,41 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
     [onEventClick]
   );
 
+  const handlePrevDay = useCallback(() => {
+    if (!onDateChange) return;
+    const d = new Date(dayStart);
+    d.setDate(d.getDate() - 1);
+    onDateChange(d);
+  }, [onDateChange, dayStart]);
+
+  const handleToday = useCallback(() => {
+    if (!onDateChange) return;
+    const now = new Date();
+    onDateChange(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+  }, [onDateChange]);
+
+  const handleNextDay = useCallback(() => {
+    if (!onDateChange) return;
+    const d = new Date(dayStart);
+    d.setDate(d.getDate() + 1);
+    onDateChange(d);
+  }, [onDateChange, dayStart]);
+
+  const dateLabel = useMemo<ReactNode>(() => {
+    if (renderDateLabel) return renderDateLabel(targetDate);
+    if (locale) {
+      const weekday = locale.weekdaysFull[targetDate.getDay()] ?? '';
+      const month = locale.monthsFull[targetDate.getMonth()] ?? '';
+      return `${weekday} ${targetDate.getDate()}. ${month} ${targetDate.getFullYear()}`.trim();
+    }
+    return targetDate.toLocaleDateString(undefined, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }, [renderDateLabel, targetDate, locale]);
+
   const colors = resolvedTheme.colors ?? {};
   const fonts = resolvedTheme.fonts ?? {};
   const cssVars: CSSProperties = {
@@ -276,23 +339,100 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
   const minMechanicsWidth = mechanics.length * minColumnWidth;
   const innerMinWidth = timeColumnWidth + minMechanicsWidth;
 
+  const navButtonStyle: CSSProperties = {
+    appearance: 'none',
+    border: '1px solid var(--day-calendar-header-border)',
+    background: 'var(--day-calendar-header-bg)',
+    color: 'var(--day-calendar-header-text)',
+    padding: '4px 10px',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontSize: 13,
+    lineHeight: 1.2,
+    ...styles.navigationButton,
+  };
+
   return (
     <div
       className={classNames.root}
       style={{
         width,
         height,
-        position: 'relative',
-        overflow: 'auto',
         boxSizing: 'border-box',
         background: 'var(--day-calendar-bg)',
         fontFamily: 'var(--day-calendar-content-font)',
         color: 'var(--day-calendar-header-text)',
+        display: 'flex',
+        flexDirection: 'column',
         ...cssVars,
         ...styles.root,
       }}
       data-day-calendar
     >
+      {showNavigation && (
+        <div
+          className={classNames.navigation}
+          data-day-calendar-navigation
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 12px',
+            borderBottom: '1px solid var(--day-calendar-header-border)',
+            background: 'var(--day-calendar-header-bg)',
+            flexShrink: 0,
+            fontFamily: 'var(--day-calendar-header-font)',
+            ...styles.navigation,
+          }}
+        >
+          <button
+            type="button"
+            className={classNames.navigationButton}
+            onClick={handlePrevDay}
+            aria-label="Previous day"
+            style={navButtonStyle}
+          >
+            {navigationLabels?.previous ?? '←'}
+          </button>
+          <button
+            type="button"
+            className={classNames.navigationButton}
+            onClick={handleToday}
+            style={navButtonStyle}
+          >
+            {navigationLabels?.today ?? 'Today'}
+          </button>
+          <button
+            type="button"
+            className={classNames.navigationButton}
+            onClick={handleNextDay}
+            aria-label="Next day"
+            style={navButtonStyle}
+          >
+            {navigationLabels?.next ?? '→'}
+          </button>
+          <div
+            className={classNames.navigationLabel}
+            style={{
+              marginLeft: 12,
+              fontWeight: 600,
+              fontSize: 14,
+              ...styles.navigationLabel,
+            }}
+          >
+            {dateLabel}
+          </div>
+        </div>
+      )}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          position: 'relative',
+          overflow: 'auto',
+        }}
+      >
       <div
         style={{
           position: 'relative',
@@ -485,6 +625,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
             />
           )}
         </div>
+      </div>
       </div>
     </div>
   );
