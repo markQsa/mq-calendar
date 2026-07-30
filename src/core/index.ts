@@ -8,3 +8,11 @@ export { ZoomController } from './ZoomController';
 export { ScrollController } from './ScrollController';
 export { GridCalculator } from './GridCalculator';
 export { TimeConverter as CoreTimeConverter } from './TimeConverter';
+export type { TimeScale } from './TimeScale';
+export {
+  identityTimeScale,
+  createTimeScale,
+  virtualMidpoint,
+  DEFAULT_COMPRESSION_FACTOR,
+  DEFAULT_COMPRESSION_MAX_VIEWPORT_SPAN
+} from './TimeScale';

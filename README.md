@@ -20,6 +20,7 @@
 - 📊 **Row grouping** - Organize timeline items with collapsible row groups
 - 🌍 **Localization** - Support for 13+ European languages
 - ⏰ **Availability overlay** - Show working hours and available time periods
+- 🗜️ **Compressed closed hours** - Shrink nights and weekends so opening hours get the space
 - 📊 **Smart aggregation** - Auto-aggregate items when zoomed out for better performance
 - ⚛️ **React first** - Optimized React components with hooks
 - 📦 **TypeScript** - Full type safety and IntelliSense support
@@ -122,6 +123,7 @@ The main container component that manages the timeline viewport, zoom level, and
 | `locale` | `CalendarLocale` | - | Locale for date formatting |
 | `theme` | `'light' \| 'dark' \| TimelineTheme` | `'light'` | Theme preset or custom theme object |
 | `availability` | `AvailabilityConfig` | - | Availability/working hours configuration |
+| `compressClosedHours` | `boolean \| CompressClosedHoursOptions` | `false` | Shrink the parts of the axis outside opening hours ([details](#compressing-closed-hours)) |
 | `onViewportChange` | `(start: Date, end: Date) => void` | - | Called when viewport changes |
 | `onZoomChange` | `(pixelsPerMs: number) => void` | - | Called when zoom level changes |
 
@@ -335,6 +337,79 @@ Show available and unavailable time periods:
   }}
 >
 ```
+
+## Compressing Closed Hours
+
+In a week or month view most of the axis is time nobody can book. Set
+`compressClosedHours` to shrink those periods so the opening hours get the
+space:
+
+```tsx
+<TimelineCalendar
+  startDate={weekStart}
+  endDate={weekEnd}
+  availability={{
+    weekly: {
+      1: [{ start: '06:00', end: '18:00' }], // Mon
+      2: [{ start: '06:00', end: '18:00' }],
+      3: [{ start: '06:00', end: '18:00' }],
+      4: [{ start: '06:00', end: '18:00' }],
+      5: [{ start: '06:00', end: '18:00' }], // Fri
+    },
+  }}
+  compressClosedHours
+>
+```
+
+A car workshop open 06:00–18:00 then renders each day column as a narrow strip
+for 00:00–06:00, a full-width 06:00–18:00 block, and a narrow strip for
+18:00–24:00:
+
+```
+ linear:  ....######....|....######....|....######....
+ 06→18:   .##########...|.##########...|.##########...
+          ^ compressed   ^ day boundary
+```
+
+The whole axis stays consistent: grid lines, header cells, items, pinpoints,
+the current-time line, drag & drop and zooming all follow the compressed axis.
+
+### Options
+
+Pass an object instead of `true` to tune it:
+
+```tsx
+compressClosedHours={{
+  factor: 0.1,                     // closed periods at 10% width (0 hides them)
+  maxViewportSpan: '31 days',      // no compression above this span
+  compressFullyClosedDays: false,  // keep weekends at full width
+  availability: officeHours,       // separate config from the overlay's
+}}
+```
+
+| Option | Type | Default | Description |
+|------|------|---------|-------------|
+| `factor` | `number` | `0.15` | Width multiplier for closed periods. `0` collapses them completely |
+| `maxViewportSpan` | `DurationValue` | `"62 days"` | Above this viewport span the axis stays linear (closed periods would be sub-pixel anyway) |
+| `compressFullyClosedDays` | `boolean` | `true` | Whether days with no opening hours (e.g. weekends) are compressed too |
+| `availability` | `AvailabilityConfig` | the `availability` prop | Where the opening hours come from |
+
+### Behavior
+
+- Needs a `weekly` or `simple` pattern; `specific` ranges only *add*
+  availability, and a config without a recurring pattern counts as always open,
+  so nothing is compressed
+- Evening and the following morning form one compressed strip across midnight;
+  consecutive fully closed days (a weekend) merge into a single strip
+- Header cells too narrow to label inside a strip are merged into one cell
+  (six night hours become one `00:00` cell) or left blank when even the merged
+  cell is too narrow, and grid lines that would sit closer than 24px inside a
+  strip are dropped
+- Compressed grid lines and header cells carry `isCompressed: true`
+  (plus `mergedCellCount`) so `renderGridLine` / `renderHeaderCell` can style
+  them differently
+- Turning compression on or off keeps the visible time range and refits the
+  zoom level, so the view doesn't jump to another date
 
 ## Day Calendar (vertical day view)
 

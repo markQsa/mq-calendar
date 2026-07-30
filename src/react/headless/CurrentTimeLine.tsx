@@ -8,6 +8,11 @@ export interface CurrentTimeLineProps {
   viewportStart: number;
   /** Pixels per millisecond for positioning */
   pixelsPerMs: number;
+  /**
+   * Pre-computed pixel position. Takes precedence over the linear calculation -
+   * required when the time axis is compressed.
+   */
+  position?: number;
   /** Line width in pixels (default: 2) */
   lineWidth?: number;
   /** Custom styles */
@@ -21,11 +26,12 @@ export const CurrentTimeLine: React.FC<CurrentTimeLineProps> = ({
   currentTime,
   viewportStart,
   pixelsPerMs,
+  position: positionOverride,
   lineWidth = 2,
   styles = {}
 }) => {
   // Calculate position of current time line
-  const position = (currentTime - viewportStart) * pixelsPerMs;
+  const position = positionOverride ?? (currentTime - viewportStart) * pixelsPerMs;
 
   // Calculate marker size based on line width
   const markerSize = 12;

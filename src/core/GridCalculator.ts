@@ -1,14 +1,24 @@
 import type { GridLine, HeaderCell, TimeUnit, ViewportState, ZoomState } from './types';
 import { getStartOf, addTime, formatTimeUnit, TIME_UNIT_MS } from '../utils/dateUtils';
+import { identityTimeScale, type TimeScale } from './TimeScale';
 
 export interface GridCalculatorConfig {
   /** Minimum spacing between grid lines in pixels */
   minSpacing: number;
   /** Maximum spacing before adding more detailed grid lines */
   maxSpacing: number;
+  /** Minimum spacing in pixels for grid lines inside compressed ranges */
+  minCompressedSpacing?: number;
   /** Locale for formatting dates */
   locale?: import('../utils/locales').CalendarLocale;
 }
+
+/**
+ * Default minimum spacing for grid lines inside a compressed range.
+ * Sub-unit ticks packed into a narrow strip read as a barcode, so only the
+ * boundaries survive unless they are at least this far apart.
+ */
+const DEFAULT_MIN_COMPRESSED_SPACING = 24;
 
 /**
  * Calculates which grid lines and header cells to display based on zoom level
@@ -20,6 +30,7 @@ export class GridCalculator {
     this.config = {
       minSpacing: config?.minSpacing ?? 60,
       maxSpacing: config?.maxSpacing ?? 200,
+      minCompressedSpacing: config?.minCompressedSpacing ?? DEFAULT_MIN_COMPRESSED_SPACING,
       locale: config?.locale
     };
   }
@@ -126,7 +137,11 @@ export class GridCalculator {
   /**
    * Calculate grid lines for the visible viewport
    */
-  calculateGridLines(viewport: ViewportState, zoom: ZoomState): GridLine[] {
+  calculateGridLines(
+    viewport: ViewportState,
+    zoom: ZoomState,
+    scale: TimeScale = identityTimeScale
+  ): GridLine[] {
     const lines: GridLine[] = [];
     const units = this.determineTimeUnits(zoom.pixelsPerMs);
 
@@ -137,7 +152,8 @@ export class GridCalculator {
         unit,
         level,
         isPrimary,
-        zoom.pixelsPerMs
+        zoom.pixelsPerMs,
+        scale
       );
       lines.push(...unitLines);
     }
@@ -154,10 +170,19 @@ export class GridCalculator {
     unit: TimeUnit,
     level: number,
     isPrimary: boolean,
-    pixelsPerMs: number
+    pixelsPerMs: number,
+    scale: TimeScale = identityTimeScale
   ): GridLine[] {
     const lines: GridLine[] = [];
     const startDate = new Date(startTime);
+    const virtualStart = scale.toVirtual(startTime);
+
+    // Inside a compressed range the lines of this unit may sit too close
+    // together to be readable - then only the range boundary is drawn
+    const minCompressedSpacing = this.config.minCompressedSpacing ?? DEFAULT_MIN_COMPRESSED_SPACING;
+    const skipInsideCompressed =
+      !scale.isIdentity &&
+      TIME_UNIT_MS[unit] * scale.factor * pixelsPerMs < minCompressedSpacing;
 
     // Get the first boundary of this unit
     let current = getStartOf(startDate, unit);
@@ -170,16 +195,19 @@ export class GridCalculator {
     // Generate lines until we pass the end time
     while (current.getTime() <= endTime) {
       const timestamp = current.getTime();
-      const position = (timestamp - startTime) * pixelsPerMs;
+      const compressedRange = scale.rangeAt(timestamp);
 
-      lines.push({
-        timestamp,
-        position,
-        type: unit,
-        label: formatTimeUnit(current, unit, this.config.locale),
-        isPrimary,
-        level
-      });
+      if (!(skipInsideCompressed && compressedRange && timestamp > compressedRange.start)) {
+        lines.push({
+          timestamp,
+          position: (scale.toVirtual(timestamp) - virtualStart) * pixelsPerMs,
+          type: unit,
+          label: formatTimeUnit(current, unit, this.config.locale),
+          isPrimary,
+          level,
+          isCompressed: compressedRange ? true : undefined
+        });
+      }
 
       current = addTime(current, 1, unit);
     }
@@ -475,7 +503,11 @@ export class GridCalculator {
   /**
    * Calculate header cells for the visible viewport
    */
-  calculateHeaderCells(viewport: ViewportState, zoom: ZoomState): HeaderCell[][] {
+  calculateHeaderCells(
+    viewport: ViewportState,
+    zoom: ZoomState,
+    scale: TimeScale = identityTimeScale
+  ): HeaderCell[][] {
     const units = this.determineTimeUnits(zoom.pixelsPerMs);
     const rows: HeaderCell[][] = [];
 
@@ -505,7 +537,8 @@ export class GridCalculator {
             weekUnit.unit,
             weekUnit.level,
             weekUnit.isPrimary,
-            zoom.pixelsPerMs
+            zoom.pixelsPerMs,
+            scale
           );
           weekCells = this.combineYearMonthWithWeek(tempWeekCells);
         }
@@ -522,7 +555,8 @@ export class GridCalculator {
             weekUnit.unit,
             weekUnit.level,
             weekUnit.isPrimary,
-            zoom.pixelsPerMs
+            zoom.pixelsPerMs,
+            scale
           );
           weekCells = this.combineMonthWithWeek(tempWeekCells);
         }
@@ -545,7 +579,8 @@ export class GridCalculator {
             monthUnit.unit,
             monthUnit.level,
             monthUnit.isPrimary,
-            zoom.pixelsPerMs
+            zoom.pixelsPerMs,
+            scale
           );
           monthCells = this.combineYearWithMonth(tempMonthCells);
         }
@@ -581,7 +616,8 @@ export class GridCalculator {
           unit,
           level,
           isPrimary,
-          zoom.pixelsPerMs
+          zoom.pixelsPerMs,
+          scale
         );
         rows.push(cells);
       }
@@ -599,10 +635,14 @@ export class GridCalculator {
     unit: TimeUnit,
     level: number,
     isPrimary: boolean,
-    pixelsPerMs: number
+    pixelsPerMs: number,
+    scale: TimeScale = identityTimeScale
   ): HeaderCell[] {
     const cells: HeaderCell[] = [];
+    /** Start of the compressed range each cell sits in (null when uncompressed) */
+    const compressedRangeStarts: Array<number | null> = [];
     const startDate = new Date(startTime);
+    const virtualStart = scale.toVirtual(startTime);
     let current = getStartOf(startDate, unit);
 
     while (current.getTime() <= endTime) {
@@ -611,14 +651,19 @@ export class GridCalculator {
 
       const cellStart = Math.max(timestamp, startTime);
       const cellEnd = Math.min(nextTimestamp, endTime);
-      const position = (cellStart - startTime) * pixelsPerMs;
-      const width = (cellEnd - cellStart) * pixelsPerMs;
+      const position = (scale.toVirtual(cellStart) - virtualStart) * pixelsPerMs;
+      const width = scale.virtualSpan(cellStart, cellEnd) * pixelsPerMs;
 
       if (width > 0) {
         const label = formatTimeUnit(current, unit, this.config.locale);
 
         // Check if cell is partially visible at viewport edges
         const isPartiallyVisible = timestamp < startTime || nextTimestamp > endTime;
+
+        // A cell counts as compressed only when it lies fully inside a
+        // compressed range - cells straddling a boundary are drawn normally
+        const compressedRange = scale.rangeAt(cellStart);
+        const isCompressed = compressedRange !== null && cellEnd <= compressedRange.end;
 
         cells.push({
           timestamp,
@@ -628,14 +673,70 @@ export class GridCalculator {
           label,
           isPrimary,
           level,
-          isPartiallyVisible
+          isPartiallyVisible,
+          isCompressed: isCompressed ? true : undefined
         });
+        compressedRangeStarts.push(isCompressed ? compressedRange.start : null);
       }
 
       current = addTime(current, 1, unit);
     }
 
-    return cells;
+    const merged = this.mergeCompressedCells(cells, compressedRangeStarts);
+
+    // A few pixels of a clipped timestamp ("18:0") reads as broken data, so
+    // compressed cells that cannot fit their label are left blank
+    for (const cell of merged) {
+      if (cell.isCompressed && this.estimateTextWidth(cell.label, cell.isPrimary) > cell.width) {
+        cell.label = '';
+      }
+    }
+
+    return merged;
+  }
+
+  /**
+   * Merge runs of cells that sit inside the same compressed range and are too
+   * narrow to carry a label of their own.
+   *
+   * Without this, a strip holding six compressed night hours would render six
+   * clipped labels a few pixels wide each; merged, it renders as one cell
+   * labelled with the start of the run (e.g. "00:00").
+   */
+  private mergeCompressedCells(
+    cells: HeaderCell[],
+    compressedRangeStarts: Array<number | null>
+  ): HeaderCell[] {
+    if (!cells.some((cell, index) => cell.isCompressed && compressedRangeStarts[index] !== null)) {
+      return cells;
+    }
+
+    const merged: HeaderCell[] = [];
+    const mergedRangeStarts: Array<number | null> = [];
+
+    cells.forEach((cell, index) => {
+      const rangeStart = compressedRangeStarts[index];
+      const previous = merged[merged.length - 1];
+      const previousRangeStart = mergedRangeStarts[mergedRangeStarts.length - 1];
+
+      const canMerge =
+        previous !== undefined &&
+        rangeStart !== null &&
+        rangeStart === previousRangeStart &&
+        cell.width < this.config.minSpacing;
+
+      if (canMerge) {
+        previous.width += cell.width;
+        previous.mergedCellCount = (previous.mergedCellCount ?? 1) + 1;
+        previous.isPartiallyVisible = previous.isPartiallyVisible || cell.isPartiallyVisible;
+        return;
+      }
+
+      merged.push({ ...cell });
+      mergedRangeStarts.push(rangeStart);
+    });
+
+    return merged;
   }
 
   /**

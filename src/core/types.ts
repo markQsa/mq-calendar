@@ -4,6 +4,38 @@
 export type TimeUnit = 'century' | 'decade' | 'year' | 'month' | 'week' | 'day' | 'halfday' | 'quarterday' | 'hour' | 'halfhour' | 'quarterhour' | 'minute' | 'halfminute' | 'quarterminute' | 'second' | 'millisecond';
 
 /**
+ * A half-open range of real time `[start, end)` that is drawn compressed
+ */
+export interface CompressedRange {
+  /** Start timestamp (inclusive) */
+  start: number;
+  /** End timestamp (exclusive) */
+  end: number;
+}
+
+/**
+ * Configuration for compressing parts of the time axis (e.g. closed hours)
+ */
+export interface TimeCompressionConfig {
+  /**
+   * Resolve the ranges to compress inside `[windowStart, windowEnd]`.
+   * Called lazily whenever the engine needs a wider window than it has.
+   */
+  getRanges: (windowStart: number, windowEnd: number) => CompressedRange[];
+  /**
+   * Width multiplier for compressed ranges (0-1). `0.15` renders a closed
+   * period at 15% of its normal width, `0` collapses it completely.
+   * Default: 0.15
+   */
+  factor?: number;
+  /**
+   * Skip compression while the viewport spans more than this many
+   * milliseconds. Default: 62 days.
+   */
+  maxViewportSpan?: number;
+}
+
+/**
  * Configuration for the timeline
  */
 export interface TimelineConfig {
@@ -19,6 +51,8 @@ export interface TimelineConfig {
   maxZoom?: number;
   /** Locale for date/time formatting */
   locale?: import('../utils/locales').CalendarLocale;
+  /** Optional time-axis compression (e.g. shrink closed hours) */
+  compression?: TimeCompressionConfig;
 }
 
 /**
@@ -47,6 +81,8 @@ export interface GridLine {
   isPrimary: boolean;
   /** Level/tier of this grid line (0 = most important, higher = less important) */
   level: number;
+  /** Whether this line falls inside a compressed (e.g. closed hours) range */
+  isCompressed?: boolean;
 }
 
 /**
@@ -85,6 +121,13 @@ export interface HeaderCell {
   parts?: HeaderCellPart[];
   /** Whether this cell is partially visible at viewport edges */
   isPartiallyVisible?: boolean;
+  /** Whether this cell falls inside a compressed (e.g. closed hours) range */
+  isCompressed?: boolean;
+  /**
+   * Number of same-unit cells merged into this one. Only set for compressed
+   * cells that were too narrow to carry their own label.
+   */
+  mergedCellCount?: number;
 }
 
 /**
