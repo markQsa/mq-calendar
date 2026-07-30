@@ -13,6 +13,10 @@ export { timeSpanToZoom } from '../utils/dateUtils';
 export type { OpeningHoursRange } from '../utils/openingHoursRange';
 export { openingHoursRangeForDate } from '../utils/openingHoursRange';
 
+// Export closed-hours helpers (used by compressClosedHours)
+export type { ClosedRangesOptions } from '../utils/closedRanges';
+export { openRangesForDay, closedRangesInWindow, mergeRanges } from '../utils/closedRanges';
+
 // Export aggregation utilities
 export type { TimelineItemData as AggregationItemData, AggregatedPeriod as AggregatedPeriodData } from '../utils/aggregationUtils';
 export {

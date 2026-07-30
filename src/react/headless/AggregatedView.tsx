@@ -43,7 +43,7 @@ export const AggregatedView: React.FC<AggregatedViewProps> = ({
     <>
       {periods.map((period, periodIndex) => {
         const position = engine.timeToPixel(period.start);
-        const width = engine.durationToPixels(period.end - period.start);
+        const width = engine.rangeToPixels(period.start, period.end);
         const height = rowHeight - 8; // Leave some padding
 
         // If custom renderer provided, use it

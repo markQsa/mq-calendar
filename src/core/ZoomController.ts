@@ -1,4 +1,5 @@
 import type { ZoomState, ViewportState, ZoomResult } from './types';
+import { identityTimeScale, virtualMidpoint, type TimeScale } from './TimeScale';
 
 export interface ZoomControllerConfig {
   /** Minimum zoom level (pixels per millisecond) */
@@ -11,6 +12,10 @@ export interface ZoomControllerConfig {
 
 /**
  * Handles smooth, continuous zoom operations
+ *
+ * Every method takes an optional {@link TimeScale} so that a compressed axis
+ * (e.g. shrunken closed hours) zooms around the pixel the user pointed at.
+ * With the default identity scale the math reduces to plain linear time.
  */
 export class ZoomController {
   private config: ZoomControllerConfig;
@@ -25,13 +30,15 @@ export class ZoomController {
    * @param currentViewport - Current viewport state
    * @param zoomDelta - Zoom factor (e.g., 1.1 for 10% zoom in, 0.9 for zoom out)
    * @param focalPointX - X position in pixels where zoom is centered (relative to viewport)
+   * @param scale - Time scale of the axis
    * @returns New zoom and viewport states
    */
   applyZoom(
     currentZoom: ZoomState,
     currentViewport: ViewportState,
     zoomDelta: number,
-    focalPointX: number
+    focalPointX: number,
+    scale: TimeScale = identityTimeScale
   ): ZoomResult {
     // Calculate new zoom level
     const newPixelsPerMs = currentZoom.pixelsPerMs * zoomDelta;
@@ -51,15 +58,15 @@ export class ZoomController {
     }
 
     // Calculate the timestamp at the focal point BEFORE zoom
-    const focalTimestamp = currentViewport.start + (focalPointX / currentZoom.pixelsPerMs);
+    const focalTimestamp = scale.advance(currentViewport.start, focalPointX / currentZoom.pixelsPerMs);
 
     // After zoom, we want the focal point timestamp to remain at the same pixel position
     // So we calculate the new viewport start
-    const newViewportStart = focalTimestamp - (focalPointX / clampedPixelsPerMs);
+    const newViewportStart = scale.advance(focalTimestamp, -focalPointX / clampedPixelsPerMs);
 
     // Calculate viewport end based on container width and new zoom
     const viewportDuration = this.config.containerWidth / clampedPixelsPerMs;
-    const newViewportEnd = newViewportStart + viewportDuration;
+    const newViewportEnd = scale.advance(newViewportStart, viewportDuration);
 
     return {
       zoomState: {
@@ -80,11 +87,12 @@ export class ZoomController {
   zoomIn(
     currentZoom: ZoomState,
     currentViewport: ViewportState,
-    focalPointX?: number
+    focalPointX?: number,
+    scale: TimeScale = identityTimeScale
   ): ZoomResult {
     // Default focal point is center of viewport
     const focal = focalPointX ?? this.config.containerWidth / 2;
-    return this.applyZoom(currentZoom, currentViewport, 1.2, focal);
+    return this.applyZoom(currentZoom, currentViewport, 1.2, focal, scale);
   }
 
   /**
@@ -93,17 +101,18 @@ export class ZoomController {
   zoomOut(
     currentZoom: ZoomState,
     currentViewport: ViewportState,
-    focalPointX?: number
+    focalPointX?: number,
+    scale: TimeScale = identityTimeScale
   ): ZoomResult {
     const focal = focalPointX ?? this.config.containerWidth / 2;
-    return this.applyZoom(currentZoom, currentViewport, 1 / 1.2, focal);
+    return this.applyZoom(currentZoom, currentViewport, 1 / 1.2, focal, scale);
   }
 
   /**
    * Zoom to fit a specific time range in the viewport
    */
-  zoomToFit(startTime: number, endTime: number): ZoomResult {
-    const duration = endTime - startTime;
+  zoomToFit(startTime: number, endTime: number, scale: TimeScale = identityTimeScale): ZoomResult {
+    const duration = scale.virtualSpan(startTime, endTime);
     const pixelsPerMs = this.config.containerWidth / duration;
 
     // Clamp to limits
@@ -114,7 +123,7 @@ export class ZoomController {
 
     // Recalculate duration if zoom was clamped
     const actualDuration = this.config.containerWidth / clampedPixelsPerMs;
-    const center = (startTime + endTime) / 2;
+    const center = virtualMidpoint(scale, startTime, endTime);
 
     return {
       zoomState: {
@@ -122,8 +131,8 @@ export class ZoomController {
         centerTimestamp: center
       },
       viewport: {
-        start: center - actualDuration / 2,
-        end: center + actualDuration / 2,
+        start: scale.advance(center, -actualDuration / 2),
+        end: scale.advance(center, actualDuration / 2),
         scrollOffset: 0
       }
     };
@@ -135,19 +144,20 @@ export class ZoomController {
   updateContainerWidth(
     newWidth: number,
     currentZoom: ZoomState,
-    currentViewport: ViewportState
+    currentViewport: ViewportState,
+    scale: TimeScale = identityTimeScale
   ): ZoomResult {
     this.config.containerWidth = newWidth;
 
     // Maintain the center timestamp
-    const center = (currentViewport.start + currentViewport.end) / 2;
+    const center = virtualMidpoint(scale, currentViewport.start, currentViewport.end);
     const newDuration = newWidth / currentZoom.pixelsPerMs;
 
     return {
       zoomState: currentZoom,
       viewport: {
-        start: center - newDuration / 2,
-        end: center + newDuration / 2,
+        start: scale.advance(center, -newDuration / 2),
+        end: scale.advance(center, newDuration / 2),
         scrollOffset: currentViewport.scrollOffset
       }
     };

@@ -23,8 +23,56 @@ const dateRanges = {
   },
 };
 
+// Car workshop demo: open 06:00–18:00 on weekdays, closed on weekends
+const workshopHours = {
+  weekly: {
+    1: [{ start: "06:00", end: "18:00" }],
+    2: [{ start: "06:00", end: "18:00" }],
+    3: [{ start: "06:00", end: "18:00" }],
+    4: [{ start: "06:00", end: "18:00" }],
+    5: [{ start: "06:00", end: "18:00" }],
+  },
+  unavailableStyle: { backgroundColor: "rgba(156, 163, 175, 0.18)" },
+};
+
+// Monday–Sunday of the current week
+const weekStart = (() => {
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  return monday;
+})();
+
+const workshopWeek = {
+  start: weekStart,
+  end: new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7),
+};
+
+const workshopJobs = [
+  { title: "Öljynvaihto", day: 0, from: 7, to: 9, color: "#2563eb" },
+  { title: "Jarruhuolto", day: 0, from: 10, to: 14, color: "#059669" },
+  { title: "Katsastus", day: 1, from: 8, to: 11, color: "#ea580c" },
+  { title: "Moottoriremontti", day: 2, from: 6.5, to: 17, color: "#7c3aed" },
+  { title: "Rengaskierrätys", day: 4, from: 12, to: 17.5, color: "#dc2626" },
+].map(({ title, day, from, to, color }) => ({
+  title,
+  color,
+  start: new Date(weekStart.getTime() + (day * 24 + from) * 60 * 60 * 1000),
+  end: new Date(weekStart.getTime() + (day * 24 + to) * 60 * 60 * 1000),
+}));
+
+const compressOptions = {
+  Off: false,
+  "Compress 15%": true,
+  "Compress 5%": { factor: 0.05 },
+  "Hide closed": { factor: 0 },
+} as const;
+
+type CompressMode = keyof typeof compressOptions;
+
 function App() {
   const [viewport, setViewport] = useState({ start: "", end: "" });
+  const [compressMode, setCompressMode] = useState<CompressMode>("Compress 15%");
   const [zoom, setZoom] = useState(0);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
 
@@ -589,6 +637,70 @@ function App() {
                   Train Station Maintenance
                 </div>
               </TimelineItem>
+            </TimelineRow>
+          </TimelineRowGroup>
+        </TimelineCalendar>
+      </div>
+
+      {/* Compressed closed hours — week view of a car workshop open 06:00–18:00 */}
+      <h2 style={{ marginTop: "32px" }}>Week view with compressed closed hours</h2>
+      <div style={{ marginBottom: "8px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        {(
+          [
+            { label: "Off", value: false },
+            { label: "Compress 15%", value: true },
+            { label: "Compress 5%", value: { factor: 0.05 } },
+            { label: "Hide closed", value: { factor: 0 } },
+          ] as const
+        ).map(({ label, value }) => (
+          <button
+            key={label}
+            onClick={() => setCompressMode(label)}
+            style={{
+              padding: "8px 16px",
+              cursor: "pointer",
+              backgroundColor: compressMode === label ? "#3b82f6" : "#e5e7eb",
+              color: compressMode === label ? "white" : "black",
+              border: "none",
+              borderRadius: "4px",
+            }}
+            data-compress-mode={label}
+            title={typeof value === "object" ? JSON.stringify(value) : String(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="timeline-wrapper">
+        <TimelineCalendar
+          startDate={workshopWeek.start}
+          endDate={workshopWeek.end}
+          width="100%"
+          height="260px"
+          locale={fiFI}
+          theme={themeMode}
+          showCurrentTime={true}
+          availability={workshopHours}
+          compressClosedHours={compressOptions[compressMode]}
+        >
+          <TimelineRowGroup>
+            <TimelineRow id="workshop-bay-1" label="Bay 1" collapsible={false} showHeader={false}>
+              {workshopJobs.map((job) => (
+                <TimelineItem
+                  key={job.title}
+                  id={job.title}
+                  startTime={job.start}
+                  endTime={job.end}
+                  row={0}
+                >
+                  <div
+                    className="timeline-item"
+                    style={{ backgroundColor: job.color, color: "white" }}
+                  >
+                    {job.title}
+                  </div>
+                </TimelineItem>
+              ))}
             </TimelineRow>
           </TimelineRowGroup>
         </TimelineCalendar>

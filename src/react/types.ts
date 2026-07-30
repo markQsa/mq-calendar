@@ -63,6 +63,33 @@ export interface AvailabilityConfig {
 }
 
 /**
+ * Options for compressing the parts of the time axis that fall outside
+ * opening hours (see `compressClosedHours` on `<TimelineCalendar>`)
+ */
+export interface CompressClosedHoursOptions {
+  /**
+   * Width multiplier for closed periods (0-1). `0.15` draws a closed period at
+   * 15% of its normal width, `0` collapses it completely. Default: `0.15`
+   */
+  factor?: number;
+  /**
+   * Stop compressing once the viewport spans more than this, where closed
+   * periods are sub-pixel anyway. Default: `"62 days"`
+   */
+  maxViewportSpan?: DurationValue;
+  /**
+   * Availability used to derive the opening hours.
+   * Defaults to the `availability` prop.
+   */
+  availability?: AvailabilityConfig;
+  /**
+   * Whether days without any opening hours (e.g. weekends) are compressed as a
+   * whole. Set to `false` to keep them at full width. Default: `true`
+   */
+  compressFullyClosedDays?: boolean;
+}
+
+/**
  * Theme configuration for timeline styling
  */
 export interface TimelineTheme {
@@ -208,6 +235,12 @@ export interface TimelineCalendarProps {
   renderGridLine?: (params: GridLineRenderParams) => ReactNode;
   /** Availability configuration for showing available/unavailable time periods */
   availability?: AvailabilityConfig;
+  /**
+   * Compress the time outside opening hours so working hours get the space.
+   * Requires `availability` (or `compressClosedHours.availability`) with a
+   * `weekly` or `simple` pattern. Pass `true` for the defaults.
+   */
+  compressClosedHours?: boolean | CompressClosedHoursOptions;
   /** Children (TimelineItem components) */
   children?: ReactNode;
   /** Callback when viewport changes */

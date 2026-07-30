@@ -274,17 +274,13 @@ export const TimelinePinpointGroup: React.FC<TimelinePinpointGroupProps> = ({
   const clusters = useMemo(() => {
     if (!engine || pinpoints.length === 0) return [];
 
-    const viewport = engine.getViewportState();
-    const zoomState = engine.getZoomState();
-    const pixelsPerMs = zoomState.pixelsPerMs;
-
     // Create pinpoints with viewport-relative positions for clustering check
     // Store both viewport and original positions
     type ExtendedPinpointItem = PinpointItem & { originalPixelPosition: number };
 
     const viewportPinpoints: ExtendedPinpointItem[] = pinpoints.map(p => {
       // Calculate screen-space position (0 to viewport width)
-      const viewportPixelPosition = (p.timestamp - viewport.start) * pixelsPerMs;
+      const viewportPixelPosition = engine.timeToPixel(p.timestamp);
 
       return {
         ...p,

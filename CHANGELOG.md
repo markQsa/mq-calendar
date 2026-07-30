@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `compressClosedHours` on `<TimelineCalendar>`: compresses the parts of the
+  time axis that fall outside opening hours, so a week/month view gives the
+  working hours the space. A workshop open 06:00–18:00 renders each day column
+  as a narrow 00:00–06:00 strip, a full-width 06:00–18:00 block, and a narrow
+  18:00–24:00 strip
+- Options object (`factor`, `maxViewportSpan`, `compressFullyClosedDays`,
+  `availability`) for tuning how hard closed periods are compressed, when
+  compression switches off, and whether fully closed days collapse
+- Piecewise-linear time axis in the core: `TimeScale`, `createTimeScale`,
+  `identityTimeScale`, `virtualMidpoint`, plus `TimelineConfig.compression`,
+  `TimelineEngine.setCompression()` / `getTimeScale()` and the new
+  `TimelineEngine.rangeToPixels(start, end)`
+- New helpers exported from `mq-timeline-calendar/react`:
+  `closedRangesInWindow`, `openRangesForDay`, `mergeRanges`
+- `isCompressed` on `GridLine` and `HeaderCell`, plus `mergedCellCount` on
+  `HeaderCell`, so custom renderers can style compressed strips
+- New exported types: `CompressClosedHoursOptions`, `TimeCompressionConfig`,
+  `CompressedRange`, `TimeScale`, `ClosedRangesOptions`
+
+### Changed
+
+- Zoom, scroll, drag & drop, grid lines, header cells, items, pinpoint
+  clustering and the current-time line all position through the time scale, so
+  they stay aligned when part of the axis is compressed. With compression off
+  the math is unchanged
+- Header cells that are too narrow to label inside a compressed strip are merged
+  into one labelled cell (and left blank when even the merged cell is too
+  narrow), and grid lines closer than 24px inside a strip are dropped so a
+  compressed night doesn't render as a barcode
+
+### Notes
+
+- Compression requires an `AvailabilityConfig` with a `weekly` or `simple`
+  pattern, and is skipped for viewports wider than `maxViewportSpan`
+  (default 62 days), where closed periods would be sub-pixel anyway
+- `TimeConverter.durationToPixels()` is unaware of compression by design; use
+  `rangeToPixels(start, end)` for anything drawn on the timeline
+
 ## [0.5.0] - 2026-05-12
 
 ### Added

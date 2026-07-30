@@ -12,8 +12,9 @@ import { AvailabilityOverlay } from './AvailabilityOverlay';
 import { TimelineContext } from './TimelineContext';
 import { defaultTimeConverter } from '../../utils/timeConverter';
 import { timeSpanToZoom, getEndOfPeriod } from '../../utils/dateUtils';
+import { closedRangesInWindow } from '../../utils/closedRanges';
 import { themes } from '../themes';
-import type { HeaderCell } from '../../core/types';
+import type { HeaderCell, TimeCompressionConfig } from '../../core/types';
 
 /**
  * Main Timeline Calendar component (headless)
@@ -36,6 +37,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   renderHeaderCell,
   renderGridLine,
   availability,
+  compressClosedHours = false,
   children,
   onViewportChange,
   onZoomChange,
@@ -86,6 +88,49 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     return maxZoom;
   }, [maxZoom, containerWidth]);
 
+  // Time-axis compression for closed hours.
+  // Derived from primitives + a content signature so the config object stays
+  // referentially stable even when `availability` is an inline literal.
+  const compressionOptions = typeof compressClosedHours === 'object' ? compressClosedHours : {};
+  const compressionEnabled = Boolean(compressClosedHours);
+  const compressionAvailability = compressionOptions.availability ?? availability;
+  const compressionFactor = compressionOptions.factor;
+  const compressionMaxViewportSpan = compressionOptions.maxViewportSpan;
+  const compressFullyClosedDays = compressionOptions.compressFullyClosedDays;
+  const availabilitySignature =
+    compressionEnabled && compressionAvailability
+      ? JSON.stringify([
+          compressionAvailability.weekly,
+          compressionAvailability.simple,
+          compressionAvailability.specific
+        ])
+      : '';
+
+  const compression = useMemo<TimeCompressionConfig | null>(() => {
+    if (!compressionEnabled || !compressionAvailability) return null;
+
+    const config = compressionAvailability;
+    const maxViewportSpan =
+      compressionMaxViewportSpan !== undefined
+        ? timeConverter.parseDuration?.(compressionMaxViewportSpan)
+        : undefined;
+
+    return {
+      factor: compressionFactor,
+      maxViewportSpan,
+      getRanges: (windowStart, windowEnd) =>
+        closedRangesInWindow(windowStart, windowEnd, config, { compressFullyClosedDays })
+    };
+    // `availabilitySignature` stands in for the availability object's content
+  }, [
+    compressionEnabled,
+    availabilitySignature,
+    compressionFactor,
+    compressionMaxViewportSpan,
+    compressFullyClosedDays,
+    timeConverter
+  ]);
+
   // Initialize timeline engine
   const { engine, gridLines, headerCells, refresh, refreshCounter } = useTimelineEngine({
     startDate: startDateObj,
@@ -95,7 +140,8 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     maxZoom: maxZoomValue,
     locale,
     animateDateChanges,
-    animationDuration
+    animationDuration,
+    compression
   });
 
   // Effect to notify zoom/viewport changes during date animations
@@ -380,6 +426,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
       currentTime={currentTime}
       viewportStart={engine.getViewportState().start}
       pixelsPerMs={currentPixelsPerMs}
+      position={engine.timeToPixel(currentTime)}
       lineWidth={currentTimeLineWidth}
       styles={styles}
     />

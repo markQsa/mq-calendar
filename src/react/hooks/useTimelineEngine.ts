@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { TimelineEngine } from '../../core/TimelineEngine';
-import type { TimelineConfig, GridLine, HeaderCell } from '../../core/types';
+import type { TimelineConfig, TimeCompressionConfig, GridLine, HeaderCell } from '../../core/types';
 import type { CalendarLocale } from '../../utils/locales';
 
 export interface UseTimelineEngineOptions {
@@ -12,6 +12,12 @@ export interface UseTimelineEngineOptions {
   locale?: CalendarLocale;
   animateDateChanges?: boolean;
   animationDuration?: number;
+  /**
+   * Time-axis compression (e.g. shrink closed hours).
+   * Must be referentially stable - a new object on every render would refit
+   * the zoom on every render.
+   */
+  compression?: TimeCompressionConfig | null;
 }
 
 export interface UseTimelineEngineReturn {
@@ -34,6 +40,7 @@ export function useTimelineEngine(options: UseTimelineEngineOptions): UseTimelin
   const isInitializedRef = useRef(false);
   const prevDatesRef = useRef<{ start: number; end: number } | null>(null);
   const prevContainerWidthRef = useRef(options.containerWidth);
+  const prevCompressionRef = useRef(options.compression ?? null);
 
   // Refresh grid lines and header cells
   const refresh = useCallback(() => {
@@ -53,7 +60,8 @@ export function useTimelineEngine(options: UseTimelineEngineOptions): UseTimelin
         containerWidth: options.containerWidth,
         minZoom: options.minZoom,
         maxZoom: options.maxZoom,
-        locale: options.locale
+        locale: options.locale,
+        compression: options.compression ?? undefined
       };
 
       const newEngine = new TimelineEngine(config);
@@ -85,6 +93,19 @@ export function useTimelineEngine(options: UseTimelineEngineOptions): UseTimelin
       refresh();
     }
   }, [options.containerWidth, refresh]);
+
+  // Apply compression changes (toggled on/off, factor or opening hours changed)
+  useEffect(() => {
+    if (!engineRef.current || !isInitializedRef.current) return;
+
+    const compression = options.compression ?? null;
+    if (prevCompressionRef.current === compression) return;
+    prevCompressionRef.current = compression;
+
+    // Keeps the visible time range and refits the zoom to the new axis
+    engineRef.current.setCompression(compression);
+    refresh();
+  }, [options.compression, refresh]);
 
   // Handle date range changes with animation
   useEffect(() => {

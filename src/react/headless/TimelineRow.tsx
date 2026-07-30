@@ -832,7 +832,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
                 const barStartTs = timeConverter.toTimestamp(bar.startTime);
                 const barEndTs = timeConverter.toTimestamp(bar.endTime);
                 const left = engine.timeToPixel(barStartTs);
-                const width = engine.durationToPixels(barEndTs - barStartTs);
+                const width = engine.rangeToPixels(barStartTs, barEndTs);
                 return (
                   <div
                     key={`bottom-bar-${i}`}

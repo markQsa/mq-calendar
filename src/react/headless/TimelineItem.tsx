@@ -118,8 +118,10 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
     const position = engine.timeToPixel(startTimestamp);
 
     // If no duration, width is controlled by content/CSS
+    // Width comes from the two endpoints, not the duration, so items keep
+    // matching the axis when part of it is compressed (e.g. closed hours)
     const isAutoWidth = durationMs === null;
-    const itemWidth = isAutoWidth ? 0 : engine.durationToPixels(durationMs!);
+    const itemWidth = isAutoWidth ? 0 : engine.rangeToPixels(startTimestamp, itemEndTimestamp);
 
     return {
       left: position,
@@ -290,10 +292,11 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 
       // Handle dragging based on mode
       if (dragMode.current === 'horizontal') {
-        // Horizontal drag - change time only
-        const pixelsPerMs = engine.getZoomState().pixelsPerMs;
-        const deltaTimeMs = deltaX / pixelsPerMs;
-        const rawTimestamp = dragStartRef.current.startTimestamp + deltaTimeMs;
+        // Horizontal drag - change time only.
+        // Go through pixel space so the item follows the cursor even where the
+        // axis is compressed.
+        const originPixel = engine.timeToPixel(dragStartRef.current.startTimestamp);
+        const rawTimestamp = engine.pixelToTime(originPixel + deltaX);
         const snappedTimestamp = snapToInterval(rawTimestamp);
 
         currentDraggedTimestamp.current = snappedTimestamp;
