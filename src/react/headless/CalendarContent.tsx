@@ -23,6 +23,16 @@ function measureAbsoluteContentHeight(root: HTMLElement): number {
       return;
     }
 
+    // Stretch-to-parent fillers (click overlay inset:0, availability height:100%)
+    // always match the scrollport. Counting them forces content height ≥ viewport
+    // and, with subpixels, a permanent few-pixel vertical scrollbar.
+    if (element.hasAttribute('data-timeline-measure-ignore')) {
+      return;
+    }
+    if (computedStyle.top === '0px' && (computedStyle.bottom === '0px' || computedStyle.height === '100%')) {
+      return;
+    }
+
     const styleTop = Number.parseFloat(computedStyle.top);
     const styleHeight = Number.parseFloat(computedStyle.height);
     const rectBottom = element.getBoundingClientRect().bottom - rootRect.top;
@@ -61,13 +71,11 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
     if (!el || !innerEl) return;
 
     const measure = () => {
-      const h = Math.max(
-        el.clientHeight,
-        el.scrollHeight,
-        innerEl.clientHeight,
-        innerEl.scrollHeight,
-        measureAbsoluteContentHeight(innerEl)
-      );
+      // Content extent from absolute children only. Including clientHeight/
+      // scrollHeight ratchets minHeight to viewport+ε and leaves a permanent
+      // few-pixel vertical scrollbar (measurement noise ↔ scrollbar loop).
+      const contentExtent = measureAbsoluteContentHeight(innerEl);
+      const h = contentExtent > 0 ? Math.ceil(contentExtent) : 0;
       setContentHeight(prev => (prev !== h ? h : prev));
     };
 
@@ -116,6 +124,7 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
           left: 0,
           width: `${maxPosition}px`,
           height: contentHeight > 0 ? `${contentHeight}px` : '100%',
+          minHeight: '100%',
           pointerEvents: 'none'
         }}
         data-timeline-grid

@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `data-day-calendar-column` / `data-day-calendar-event` attributes and the
   exported `DayCalendarEventDrop` type
 
+### Fixed
+
+- `<TimelineCalendar>` no longer shows a permanent few-pixel vertical
+  scrollbar: the content height is measured from absolutely positioned
+  children only, skipping stretch-to-parent fillers (`inset: 0`,
+  `height: 100%`, or `data-timeline-measure-ignore`), and the grid SVG gets
+  `min-height: 100%`
+- Row bottom bars are 1px tall and sit flush with the row bottom (1px apart
+  per layer) instead of 3px bars stacked 4px apart
+
 ## [0.6.1] - 2026-07-30
 
 ### Fixed
