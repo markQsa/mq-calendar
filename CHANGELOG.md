@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-09-30
+
+### Added
+
+- Drag & drop on `<DayCalendar>`: `draggableEvents` (all events or a
+  per-event predicate) and `onEventDrop` move an event in time and between
+  mechanic columns. The drop keeps the duration, snaps the start to
+  `dragSnapMinutes` (default `slotMinutes`) and clamps it to the visible hours
+- `canDropEvent(event, mechanicId)` rejects columns as drop targets
+- `renderEvent` receives `draggable`, `isDragging` and `isDragPreview`; the
+  drag preview is rendered through `renderEvent` in the target column
+- The scroll viewport auto-scrolls near its edges during a drag, Escape
+  cancels, and the click that ends a drag no longer fires `onEventClick`
+- `classNames.dragPreview` / `styles.dragPreview`, the
+  `data-day-calendar-column` / `data-day-calendar-event` attributes and the
+  exported `DayCalendarEventDrop` type
+
 ## [0.6.1] - 2026-07-30
 
 ### Fixed

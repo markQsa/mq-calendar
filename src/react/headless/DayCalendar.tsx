@@ -1,4 +1,4 @@
-import React, { CSSProperties, ReactNode, useMemo, useCallback } from 'react';
+import React, { CSSProperties, ReactNode, useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import type { TimelineTheme, AvailabilityConfig } from '../types';
 import type { TimeValue } from '../../utils/timeTypes';
 import type { CalendarLocale } from '../../utils/locales';
@@ -9,6 +9,12 @@ import { assignSubRows, type TimeRangeItem } from '../../utils/overlapDetection'
 import { openingHoursRangeForDate } from '../../utils/openingHoursRange';
 
 const MS_PER_MINUTE = 60 * 1000;
+/** Pointer travel (px) before a press on an event turns into a drag. */
+const DRAG_THRESHOLD_PX = 4;
+/** Distance (px) from the scroll viewport edge at which a drag auto-scrolls. */
+const AUTO_SCROLL_EDGE_PX = 40;
+/** Maximum auto-scroll speed (px per frame) right at the viewport edge. */
+const AUTO_SCROLL_MAX_SPEED_PX = 16;
 
 export interface Mechanic {
   id: string;
@@ -32,6 +38,29 @@ export interface DayCalendarRenderEventParams {
   height: number;
   left: number;
   width: number;
+  /** True when this event can be dragged (see `draggableEvents`). */
+  draggable: boolean;
+  /** True for the event's original position while it is being dragged. */
+  isDragging: boolean;
+  /**
+   * True for the drag preview rendered at the pointer's drop target. The
+   * preview is rendered with `pointer-events: none` inside the target column.
+   */
+  isDragPreview: boolean;
+}
+
+/** Payload of `onEventDrop` — where a dragged event was dropped. */
+export interface DayCalendarEventDrop {
+  eventId: string;
+  event: ScheduleEvent;
+  /** Column the event was dropped into. */
+  mechanicId: string;
+  /** Column the event was dragged from. */
+  previousMechanicId: string;
+  /** New start, snapped to `dragSnapMinutes`. Duration is preserved. */
+  startTime: Date;
+  endTime: Date;
+  previousStartTime: Date;
 }
 
 export interface DayCalendarClassNames {
@@ -46,6 +75,7 @@ export interface DayCalendarClassNames {
   mechanicColumn?: string;
   slot?: string;
   event?: string;
+  dragPreview?: string;
   currentTimeLine?: string;
 }
 
@@ -61,6 +91,7 @@ export interface DayCalendarStyles {
   mechanicColumn?: CSSProperties;
   slot?: CSSProperties;
   event?: CSSProperties;
+  dragPreview?: CSSProperties;
   currentTimeLine?: CSSProperties;
 }
 
@@ -114,6 +145,25 @@ export interface DayCalendarProps {
   onEventClick?: (eventId: string, event: ScheduleEvent) => void;
   /** Custom event renderer */
   renderEvent?: (params: DayCalendarRenderEventParams) => ReactNode;
+  /**
+   * Enable drag & drop of events across time and mechanic columns.
+   * `true` makes every event draggable; a function decides per event.
+   * Has no effect without `onEventDrop` (default: false).
+   */
+  draggableEvents?: boolean | ((event: ScheduleEvent) => boolean);
+  /** Snap granularity in minutes for dragged start times (default: `slotMinutes`) */
+  dragSnapMinutes?: number;
+  /**
+   * Whether a dragged event may be dropped into a column. A rejected column
+   * shows no preview and a drop there cancels the drag (default: all columns).
+   */
+  canDropEvent?: (event: ScheduleEvent, mechanicId: string) => boolean;
+  /**
+   * Called when a drag ends on an allowed column with a different mechanic or
+   * start time. The component stays controlled — update `events` to move it.
+   * A click that ends a drag does not fire `onEventClick`.
+   */
+  onEventDrop?: (drop: DayCalendarEventDrop) => void;
   /** Custom mechanic header renderer */
   renderMechanicHeader?: (mechanic: Mechanic) => ReactNode;
   /** Custom time label renderer */
@@ -122,6 +172,29 @@ export interface DayCalendarProps {
   classNames?: DayCalendarClassNames;
   /** Inline styles */
   styles?: DayCalendarStyles;
+}
+
+interface DragPreview {
+  event: ScheduleEvent;
+  /** Column the pointer is over, or null when that column rejects the drop. */
+  mechanicId: string | null;
+  startMs: number;
+}
+
+interface DragSession {
+  event: ScheduleEvent;
+  originMechanicId: string;
+  originStartMs: number;
+  durationMs: number;
+  /** Pointer position inside the event, as ms after the event start. */
+  grabOffsetMs: number;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  lastX: number;
+  lastY: number;
+  started: boolean;
+  target: DragPreview | null;
 }
 
 interface LaidOutEvent {
@@ -138,6 +211,21 @@ function pad2(n: number): string {
 
 function formatHHmm(date: Date): string {
   return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+function defaultEventStyle(event: ScheduleEvent, mechanic: Mechanic): CSSProperties {
+  return {
+    position: 'absolute',
+    background: event.color || mechanic.color || '#3b82f6',
+    color: 'white',
+    boxSizing: 'border-box',
+    padding: '2px 6px',
+    borderRadius: 4,
+    fontSize: 12,
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+    userSelect: 'none',
+  };
 }
 
 function localMidnight(timestamp: number): number {
@@ -174,6 +262,10 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
   onSlotClick,
   onEventClick,
   renderEvent,
+  draggableEvents = false,
+  dragSnapMinutes,
+  canDropEvent,
+  onEventDrop,
   renderMechanicHeader,
   renderTimeLabel,
   classNames = {},
@@ -284,6 +376,214 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
     [onEventClick]
   );
 
+  const headerHeightPx = 40;
+
+  // --- Drag & drop ---------------------------------------------------------
+  // The press is tracked on window listeners so the pointer can leave the
+  // event (and the column) mid-drag. Geometry is read from the DOM on every
+  // move, so scrolling and resizing during a drag need no bookkeeping.
+  const dragEnabled = Boolean(onEventDrop) && draggableEvents !== false;
+  const isEventDraggable = useCallback(
+    (event: ScheduleEvent): boolean => {
+      if (!dragEnabled) return false;
+      return typeof draggableEvents === 'function' ? draggableEvents(event) : true;
+    },
+    [dragEnabled, draggableEvents]
+  );
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const columnRefs = useRef(new Map<string, HTMLDivElement>());
+  const dragRef = useRef<DragSession | null>(null);
+  const detachDragRef = useRef<(() => void) | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
+
+  const snapMs = Math.max(1, dragSnapMinutes ?? slotMinutes) * MS_PER_MINUTE;
+  const pixelsPerMs = slotHeight / slotMs;
+
+  // Latest values for the window listeners, which live for a whole drag.
+  const dragEnv = useRef({
+    mechanics, dayStart, visibleStartMs, visibleEndMs, pixelsPerMs, snapMs, canDropEvent, onEventDrop,
+  });
+  dragEnv.current = {
+    mechanics, dayStart, visibleStartMs, visibleEndMs, pixelsPerMs, snapMs, canDropEvent, onEventDrop,
+  };
+
+  /** Resolve the drop target under a pointer position. */
+  const resolveTarget = useCallback((session: DragSession, clientX: number, clientY: number): DragPreview => {
+    const env = dragEnv.current;
+    let mechanicId: string | null = null;
+    let columnTop = 0;
+    let nearestDistance = Infinity;
+    // Nearest column horizontally, so dragging past the outermost column
+    // still targets it instead of dropping nothing.
+    for (const mechanic of env.mechanics) {
+      const el = columnRefs.current.get(mechanic.id);
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      const distance = clientX < rect.left ? rect.left - clientX : clientX >= rect.right ? clientX - rect.right : 0;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        mechanicId = mechanic.id;
+        columnTop = rect.top;
+      }
+    }
+
+    const rawStart = env.visibleStartMs + (clientY - columnTop) / env.pixelsPerMs - session.grabOffsetMs;
+    let startMs = env.dayStart + Math.round((rawStart - env.dayStart) / env.snapMs) * env.snapMs;
+    const latestStart = env.visibleEndMs - Math.min(session.durationMs, env.visibleEndMs - env.visibleStartMs);
+    startMs = Math.max(env.visibleStartMs, Math.min(startMs, latestStart));
+
+    if (mechanicId !== null && env.canDropEvent && !env.canDropEvent(session.event, mechanicId)) {
+      mechanicId = null;
+    }
+    return { event: session.event, mechanicId, startMs };
+  }, []);
+
+  const updateTarget = useCallback((session: DragSession) => {
+    const target = resolveTarget(session, session.lastX, session.lastY);
+    const prev = session.target;
+    if (prev && prev.mechanicId === target.mechanicId && prev.startMs === target.startMs) return;
+    session.target = target;
+    setDragPreview(target);
+  }, [resolveTarget]);
+
+  const endDrag = useCallback((commit: boolean) => {
+    const session = dragRef.current;
+    detachDragRef.current?.();
+    detachDragRef.current = null;
+    dragRef.current = null;
+    if (!session?.started) return;
+    setDragPreview(null);
+
+    // The click that follows pointerup must not open the event.
+    const swallowClick = (e: MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    window.addEventListener('click', swallowClick, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', swallowClick, { capture: true }), 0);
+
+    const target = session.target;
+    const onDrop = dragEnv.current.onEventDrop;
+    if (!commit || !target || target.mechanicId === null || !onDrop) return;
+    if (target.mechanicId === session.originMechanicId && target.startMs === session.originStartMs) return;
+    onDrop({
+      eventId: session.event.id,
+      event: session.event,
+      mechanicId: target.mechanicId,
+      previousMechanicId: session.originMechanicId,
+      startTime: new Date(target.startMs),
+      endTime: new Date(target.startMs + session.durationMs),
+      previousStartTime: new Date(session.originStartMs),
+    });
+  }, []);
+
+  // Abort a drag if the component unmounts mid-gesture.
+  useEffect(() => () => {
+    detachDragRef.current?.();
+  }, []);
+
+  const handleEventPointerDown = useCallback(
+    (event: ScheduleEvent, mechanicId: string, e: React.PointerEvent) => {
+      if (!isEventDraggable(event) || dragRef.current) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const column = columnRefs.current.get(mechanicId);
+      if (!column) return;
+
+      const env = dragEnv.current;
+      const originStartMs = toTimestamp(event.startTime);
+      const durationMs = Math.max(0, toTimestamp(event.endTime) - originStartMs);
+      const pointerMs = env.visibleStartMs + (e.clientY - column.getBoundingClientRect().top) / env.pixelsPerMs;
+      const session: DragSession = {
+        event,
+        originMechanicId: mechanicId,
+        originStartMs,
+        durationMs,
+        grabOffsetMs: pointerMs - originStartMs,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        started: false,
+        target: null,
+      };
+      dragRef.current = session;
+
+      let frame: number | null = null;
+      const autoScroll = () => {
+        frame = null;
+        const current = dragRef.current;
+        const scroller = scrollRef.current;
+        if (!current?.started || !scroller) return;
+        const rect = scroller.getBoundingClientRect();
+        const speed = (distance: number) =>
+          Math.ceil(((AUTO_SCROLL_EDGE_PX - distance) / AUTO_SCROLL_EDGE_PX) * AUTO_SCROLL_MAX_SPEED_PX);
+        let dy = 0;
+        let dx = 0;
+        // The sticky header covers the top of the viewport.
+        const top = rect.top + headerHeightPx;
+        if (current.lastY < top + AUTO_SCROLL_EDGE_PX) dy = -speed(Math.max(0, current.lastY - top));
+        else if (current.lastY > rect.bottom - AUTO_SCROLL_EDGE_PX) dy = speed(Math.max(0, rect.bottom - current.lastY));
+        if (current.lastX < rect.left + AUTO_SCROLL_EDGE_PX) dx = -speed(Math.max(0, current.lastX - rect.left));
+        else if (current.lastX > rect.right - AUTO_SCROLL_EDGE_PX) dx = speed(Math.max(0, rect.right - current.lastX));
+        if (dx === 0 && dy === 0) return;
+        const beforeTop = scroller.scrollTop;
+        const beforeLeft = scroller.scrollLeft;
+        scroller.scrollTop += dy;
+        scroller.scrollLeft += dx;
+        if (scroller.scrollTop === beforeTop && scroller.scrollLeft === beforeLeft) return;
+        updateTarget(current);
+        frame = requestAnimationFrame(autoScroll);
+      };
+
+      const onMove = (moveEvent: PointerEvent) => {
+        const current = dragRef.current;
+        if (!current || moveEvent.pointerId !== current.pointerId) return;
+        current.lastX = moveEvent.clientX;
+        current.lastY = moveEvent.clientY;
+        if (!current.started) {
+          const dx = Math.abs(moveEvent.clientX - current.startX);
+          const dy = Math.abs(moveEvent.clientY - current.startY);
+          if (dx < DRAG_THRESHOLD_PX && dy < DRAG_THRESHOLD_PX) return;
+          current.started = true;
+        }
+        moveEvent.preventDefault();
+        updateTarget(current);
+        if (frame === null) frame = requestAnimationFrame(autoScroll);
+      };
+      const onUp = (upEvent: PointerEvent) => {
+        if (upEvent.pointerId !== dragRef.current?.pointerId) return;
+        endDrag(true);
+      };
+      const onCancel = (cancelEvent: PointerEvent) => {
+        if (cancelEvent.pointerId !== dragRef.current?.pointerId) return;
+        endDrag(false);
+      };
+      const onKey = (keyEvent: KeyboardEvent) => {
+        if (keyEvent.key === 'Escape') endDrag(false);
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onCancel);
+      window.addEventListener('keydown', onKey);
+      detachDragRef.current = () => {
+        if (frame !== null) cancelAnimationFrame(frame);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onCancel);
+        window.removeEventListener('keydown', onKey);
+      };
+    },
+    [isEventDraggable, updateTarget, endDrag]
+  );
+
+  const setColumnRef = useCallback((mechanicId: string, el: HTMLDivElement | null) => {
+    if (el) columnRefs.current.set(mechanicId, el);
+    else columnRefs.current.delete(mechanicId);
+  }, []);
+
   const handlePrevDay = useCallback(() => {
     if (!onDateChange) return;
     const d = new Date(dayStart);
@@ -335,7 +635,6 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
     '--day-calendar-slot-height': `${slotHeight}px`,
   } as CSSProperties;
 
-  const headerHeightPx = 40;
   const minMechanicsWidth = mechanics.length * minColumnWidth;
   const innerMinWidth = timeColumnWidth + minMechanicsWidth;
 
@@ -426,6 +725,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
         </div>
       )}
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           minHeight: 0,
@@ -535,6 +835,8 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
             return (
               <div
                 key={mechanic.id}
+                ref={el => setColumnRef(mechanic.id, el)}
+                data-day-calendar-column={mechanic.id}
                 className={classNames.mechanicColumn}
                 style={{
                   flex: '1 1 0',
@@ -563,39 +865,50 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
 
                 {/* Events (absolute-positioned on top of slots) */}
                 {laidOut.map(({ event, top, height, leftPct, widthPct }) => {
+                  const draggable = isEventDraggable(event);
+                  const isDragging = dragPreview?.event.id === event.id;
+                  const onPointerDown = draggable
+                    ? (e: React.PointerEvent) => handleEventPointerDown(event, mechanic.id, e)
+                    : undefined;
                   if (renderEvent) {
+                    // `display: contents` keeps the consumer's absolutely
+                    // positioned element laid out against the column while
+                    // still receiving its bubbled pointer events.
                     return (
-                      <React.Fragment key={event.id}>
+                      <div
+                        key={event.id}
+                        style={{ display: 'contents' }}
+                        onPointerDown={onPointerDown}
+                        data-day-calendar-event={event.id}
+                      >
                         {renderEvent({
                           event,
                           top,
                           height,
                           left: leftPct,
                           width: widthPct,
+                          draggable,
+                          isDragging,
+                          isDragPreview: false,
                         })}
-                      </React.Fragment>
+                      </div>
                     );
                   }
                   return (
                     <div
                       key={event.id}
                       className={classNames.event}
+                      data-day-calendar-event={event.id}
+                      onPointerDown={onPointerDown}
                       onClick={onEventClick ? e => handleEventClick(event, e) : undefined}
                       style={{
-                        position: 'absolute',
+                        ...defaultEventStyle(event, mechanic),
                         top,
                         height,
                         left: `${leftPct}%`,
                         width: `${widthPct}%`,
-                        background: event.color || mechanic.color || '#3b82f6',
-                        color: 'white',
-                        boxSizing: 'border-box',
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        fontSize: 12,
-                        overflow: 'hidden',
-                        cursor: onEventClick ? 'pointer' : 'default',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                        cursor: draggable ? 'grab' : onEventClick ? 'pointer' : 'default',
+                        opacity: isDragging ? 0.4 : undefined,
                         ...styles.event,
                       }}
                     >
@@ -603,6 +916,53 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                     </div>
                   );
                 })}
+
+                {/* Drag preview at the drop target */}
+                {dragPreview && dragPreview.mechanicId === mechanic.id && (() => {
+                  const { event, startMs } = dragPreview;
+                  const endMs = startMs + Math.max(0, toTimestamp(event.endTime) - toTimestamp(event.startTime));
+                  const top = (startMs - visibleStartMs) * pixelsPerMs;
+                  const height = Math.max(
+                    slotHeight / 4,
+                    (Math.min(endMs, visibleEndMs) - startMs) * pixelsPerMs
+                  );
+                  return (
+                    <div
+                      className={classNames.dragPreview}
+                      data-day-calendar-drag-preview={event.id}
+                      style={{ pointerEvents: 'none', ...styles.dragPreview }}
+                    >
+                      {renderEvent ? (
+                        renderEvent({
+                          event,
+                          top,
+                          height,
+                          left: 0,
+                          width: 100,
+                          draggable: true,
+                          isDragging: false,
+                          isDragPreview: true,
+                        })
+                      ) : (
+                        <div
+                          className={classNames.event}
+                          style={{
+                            ...defaultEventStyle(event, mechanic),
+                            top,
+                            height,
+                            left: 0,
+                            width: '100%',
+                            zIndex: 4,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                            ...styles.event,
+                          }}
+                        >
+                          {event.title}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

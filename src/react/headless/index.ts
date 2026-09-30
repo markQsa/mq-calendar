@@ -27,6 +27,7 @@ export type {
   DayCalendarStyles,
   DayCalendarRenderEventParams,
   DayCalendarNavigationLabels,
+  DayCalendarEventDrop,
   Mechanic,
   ScheduleEvent,
 } from './DayCalendar';

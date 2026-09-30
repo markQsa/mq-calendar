@@ -484,6 +484,15 @@ const events = [
 - **Current-time line** (when `showCurrentTime`) shows a horizontal line
   across all mechanic columns when the current time falls within the visible
   range.
+- **Drag & drop** (when `draggableEvents` and `onEventDrop` are set) moves
+  an event in time and between mechanic columns with mouse, pen or touch.
+  The drop keeps the event's duration, snaps its start to `dragSnapMinutes`
+  and clamps it to the visible hours. The original stays in place with
+  `isDragging` while a preview follows the pointer (`isDragPreview`); the
+  viewport auto-scrolls near its edges and Escape cancels. The component is
+  controlled — update `events` in `onEventDrop`. With touch input the
+  consumer decides between drag and scroll: set `touch-action: none` on
+  draggable event elements to drag, or leave `draggableEvents` off on touch.
 - **Navigation** (when `showNavigation`) renders a prev / today / next
   toolbar with a localized date label. `<DayCalendar>` is controlled — wire
   `onDateChange` to your `date` state.
@@ -510,7 +519,11 @@ const events = [
 | `renderDateLabel` | `(date: Date) => ReactNode` | - | Custom date label in the toolbar |
 | `onSlotClick` | `(mechanicId, datetime) => void` | - | Fired with the slot's start datetime |
 | `onEventClick` | `(eventId, event) => void` | - | Fired when an event is clicked |
-| `renderEvent` | `(params) => ReactNode` | - | Custom event renderer; receives `{ event, top, height, left, width }` (`left`/`width` are percentages) |
+| `renderEvent` | `(params) => ReactNode` | - | Custom event renderer; receives `{ event, top, height, left, width, draggable, isDragging, isDragPreview }` (`left`/`width` are percentages) |
+| `draggableEvents` | `boolean \| (event) => boolean` | `false` | Enable drag & drop for all events or per event. Needs `onEventDrop` |
+| `dragSnapMinutes` | `number` | `slotMinutes` | Snap granularity for dragged start times |
+| `canDropEvent` | `(event, mechanicId) => boolean` | - | Reject columns as drop targets (no preview, drop cancels) |
+| `onEventDrop` | `(drop: DayCalendarEventDrop) => void` | - | Fired on drop with `{ eventId, event, mechanicId, previousMechanicId, startTime, endTime, previousStartTime }` |
 | `renderMechanicHeader` | `(mechanic) => ReactNode` | - | Custom mechanic header cell |
 | `renderTimeLabel` | `(time: Date) => ReactNode` | - | Custom time-column label |
 
@@ -523,11 +536,10 @@ const events = [
 | Range | Multi-day / multi-year | Single day |
 | Rows / columns | Many rows of any height | N mechanic columns |
 | Children API | `<TimelineItem>` children | `events` prop |
-| Drag & drop | Built-in | Not yet (planned) |
+| Drag & drop | Built-in | `draggableEvents` + `onEventDrop` |
 
 ### Not yet supported
 
-- Drag & drop (move event in time or between mechanics)
 - Week view
 - Resizing events
 
