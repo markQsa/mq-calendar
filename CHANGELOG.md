@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Firefox performance of the timeline (reported by an OS Buddy pilot workshop: the calendar lags in Firefox).
+  - `CalendarContent` no longer re-measures every descendant (`querySelectorAll('*')` +
+    `getComputedStyle` + `getBoundingClientRect`) on every style mutation. Measurement is
+    coalesced to one animation frame and reads only item/row markers and direct children;
+    unchanged sizes do not re-render.
+  - The row-header sidebar now shares the content's vertical scroll container and is
+    `position: sticky`, instead of copying `scrollTop` in a `scroll` listener (a scroll-linked
+    effect that lags behind Firefox's asynchronous scrolling). Adds `data-timeline-sidebar`.
+  - `useWheel` normalizes `deltaMode` (lines and pages to pixels), so one wheel notch pans the
+    timeline in Firefox as it does in Chrome; same-frame wheel events are summed into one callback.
+  - `--timeline-*` CSS variables are read once per animation frame (`src/utils/cssVars.ts`)
+    instead of `getComputedStyle(document.documentElement)` per row and item during render.
+
+No public API or prop changes.
+
 ## [0.7.0] - 2026-09-30
 
 ### Added
