@@ -5,6 +5,7 @@ import { aggregateItemsByPeriod, getGranularity, shouldUseAggregatedView } from 
 import { AggregatedView } from './AggregatedView';
 import { useTimelineContext } from './TimelineContext';
 import { detectOverlapsAndAssignSubRows, type TimeRangeItem } from '../../utils/overlapDetection';
+import { readTimelineCssVar } from '../../utils/cssVars';
 
 interface TimelineRowState {
   id: string;
@@ -85,10 +86,8 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, [rows]);
 
   const getCalculatedPosition = useCallback((id: string): number => {
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
-    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
+    const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
 
     let cumulativeHeight = 0; // Track in pixels
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
@@ -112,10 +111,8 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, [rows]);
 
   const getRowAtAbsolutePosition = useCallback((absoluteRow: number): { rowId: string; relativeRow: number } | null => {
-    const rowHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
+    const rowHeight = readTimelineCssVar('--timeline-row-height', '60');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
     const headerRows = headerHeight / rowHeight;
 
     let currentPosition = 0;
@@ -146,8 +143,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
   }, [rows]);
 
   const getTotalHeight = useCallback((): number => {
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
     let totalHeight = 0; // Track in pixels
 
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
@@ -171,8 +167,7 @@ export const TimelineRowGroup: React.FC<TimelineRowGroupProps> = ({ children }) 
     isInHeader: boolean;
     offsetInRow: number;
   } | null => {
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
     let currentY = 0;
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
 
@@ -340,12 +335,10 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   // Compute effective height
   const effectiveHeight = useMemo(() => {
     if (height !== undefined) return height;
-    return parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    return readTimelineCssVar('--timeline-row-height', '60');
   }, [height]);
 
-  const headerHeight = parseInt(getComputedStyle(document.documentElement)
-    .getPropertyValue('--timeline-row-header-height') || '40');
+  const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
 
   // Extract context values to use as stable dependencies
   const version = groupContext?.version;
@@ -382,8 +375,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
 
   // Convert position from "row units" to actual pixels using default height
   const top = useMemo(() => {
-    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
     return calculatedStartRow * defaultHeight;
   }, [calculatedStartRow]);
 
@@ -721,7 +713,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
           {useAggregation && aggregatedPeriods ? (
             <AggregatedView
               periods={aggregatedPeriods}
-              row={calculatedStartRow + ((collapsible && showHeader) ? headerHeight / parseInt(getComputedStyle(document.documentElement).getPropertyValue('--timeline-row-height') || '60') : 0)}
+              row={calculatedStartRow + ((collapsible && showHeader) ? headerHeight / readTimelineCssVar('--timeline-row-height', '60') : 0)}
               rowHeight={effectiveHeight}
               getTypeStyle={getAggregatedTypeStyle}
               renderPeriod={renderAggregatedPeriod}

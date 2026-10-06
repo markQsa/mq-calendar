@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { RowProps } from '../types';
+import { readTimelineCssVar } from '../../utils/cssVars';
 
 interface RowContextValue {
   startRow: number;
@@ -28,8 +29,7 @@ export const Row: React.FC<RowProps> = ({
 }) => {
   const effectiveHeight = useMemo(() => {
     if (height !== undefined) return height;
-    return parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    return readTimelineCssVar('--timeline-row-height', '60');
   }, [height]);
 
   const top = useMemo(() => {

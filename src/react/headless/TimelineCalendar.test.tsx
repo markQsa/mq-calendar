@@ -263,4 +263,146 @@ describe('TimelineCalendar', () => {
       expect(calendar).toBeInTheDocument();
     });
   });
+
+  describe('sidebar sticky layout', () => {
+    const row = (testId: string, label: string) => (
+      <div data-testid={testId} style={{ height: 80, boxSizing: 'border-box' }}>
+        {label}
+      </div>
+    );
+
+    const renderWithSidebar = () =>
+      render(
+        <TimelineCalendar
+          startDate={startDate}
+          endDate={endDate}
+          height="200px"
+          sidebar={{
+            width: 100,
+            headerContent: <div>Lifts</div>,
+            content: (
+              <div>
+                {row('sidebar-row-0', 'S0')}
+                {row('sidebar-row-1', 'S1')}
+                {row('sidebar-row-2', 'S2')}
+                {row('sidebar-row-3', 'S3')}
+                {row('sidebar-row-4', 'S4')}
+                {row('sidebar-row-5', 'S5')}
+              </div>
+            ),
+          }}
+        >
+          <div>
+            {row('content-row-0', 'C0')}
+            {row('content-row-1', 'C1')}
+            {row('content-row-2', 'C2')}
+            {row('content-row-3', 'C3')}
+            {row('content-row-4', 'C4')}
+            {row('content-row-5', 'C5')}
+          </div>
+        </TimelineCalendar>
+      );
+
+    const nearestOverflowYAuto = (el: HTMLElement | null): HTMLElement | null => {
+      while (el) {
+        if (el.style.overflowY === 'auto') return el;
+        el = el.parentElement;
+      }
+      return null;
+    };
+
+    it('keeps public timeline content and header attributes', () => {
+      const { container } = renderWithSidebar();
+
+      expect(container.querySelector('[data-timeline-calendar]')).toBeInTheDocument();
+      expect(container.querySelector('[data-timeline-header]')).toBeInTheDocument();
+      expect(container.querySelector('[data-timeline-content]')).toBeInTheDocument();
+      expect(container.querySelector('[data-timeline-content-inner]')).toBeInTheDocument();
+    });
+
+    it('sticks the sidebar in the same vertical scroller as the rows', () => {
+      const { container } = renderWithSidebar();
+
+      const sidebar = container.querySelector('[data-timeline-sidebar]') as HTMLElement | null;
+      const content = container.querySelector('[data-timeline-content]') as HTMLElement | null;
+      const sidebarRow = container.querySelector('[data-testid="sidebar-row-0"]') as HTMLElement | null;
+      const contentRow = container.querySelector('[data-testid="content-row-0"]') as HTMLElement | null;
+
+      expect(sidebar).toBeTruthy();
+      expect(content).toBeTruthy();
+      expect(sidebarRow).toBeTruthy();
+      expect(contentRow).toBeTruthy();
+
+      expect(sidebar!.style.position).toBe('sticky');
+      expect(sidebar!.style.left).toBe('0px');
+      expect(sidebar!.style.transform).toBe('');
+
+      const scroller = nearestOverflowYAuto(sidebar);
+      expect(scroller).toBeTruthy();
+      expect(scroller).toContainElement(sidebarRow);
+      expect(scroller).toContainElement(contentRow);
+      expect(scroller).toContainElement(content);
+      expect(scroller).not.toBe(content);
+      expect(content!.style.overflowY).toBe('visible');
+    });
+
+    it('aligns sidebar rows with content rows after vertical scroll without writing scrollTop', () => {
+      const { container } = renderWithSidebar();
+
+      const sidebar = container.querySelector('[data-timeline-sidebar]') as HTMLElement;
+      const content = container.querySelector('[data-timeline-content]') as HTMLElement;
+      const sidebarRow = container.querySelector('[data-testid="sidebar-row-0"]') as HTMLElement;
+      const contentRow = container.querySelector('[data-testid="content-row-0"]') as HTMLElement;
+      const scroller = nearestOverflowYAuto(sidebar)!;
+
+      const sidebarScrollTop = vi.fn();
+      Object.defineProperty(sidebar, 'scrollTop', {
+        configurable: true,
+        get: () => 0,
+        set: sidebarScrollTop,
+      });
+
+      scroller.scrollTop = 48;
+      scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
+      content.scrollTop = 48;
+      content.dispatchEvent(new Event('scroll', { bubbles: true }));
+
+      expect(sidebarScrollTop).not.toHaveBeenCalled();
+      expect(scroller.contains(sidebarRow)).toBe(true);
+      expect(scroller.contains(contentRow)).toBe(true);
+
+      const sidebarOffset = sidebarRow.offsetTop;
+      const contentOffset = contentRow.offsetTop;
+      expect(sidebarOffset).toBe(contentOffset);
+    });
+  });
+
+  describe('CSS variable reads', () => {
+    it('reads --timeline-row-height at most once per render', () => {
+      const original = window.getComputedStyle;
+      const documentElementReads: Element[] = [];
+      const spy = vi.spyOn(window, 'getComputedStyle').mockImplementation((elt, pseudo) => {
+        if (elt === document.documentElement) {
+          documentElementReads.push(elt as Element);
+        }
+        return original.call(window, elt, pseudo);
+      });
+
+      try {
+        const tree = (
+          <TimelineCalendar startDate={startDate} endDate={endDate}>
+            <div>Content</div>
+          </TimelineCalendar>
+        );
+        const { rerender } = render(tree);
+
+        expect(documentElementReads.length).toBe(1);
+
+        rerender(tree);
+        expect(documentElementReads.length).toBe(1);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
 });
