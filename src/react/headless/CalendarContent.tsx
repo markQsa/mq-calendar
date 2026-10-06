@@ -10,11 +10,48 @@ export interface CalendarContentProps {
   children?: ReactNode;
 }
 
+/**
+ * Library-owned absolutely positioned nodes that can extend the scrollable
+ * content. Measuring only these (plus direct children) avoids a full-tree
+ * querySelectorAll('*') + getComputedStyle sweep on every observer tick.
+ */
+const CONTENT_EXTENT_SELECTOR = [
+  '[data-timeline-item]',
+  '[data-timeline-row]',
+  '[data-timeline-row-content]',
+  '[data-timeline-row-header]',
+  '[data-timeline-pinpoint]',
+  '[data-timeline-cluster]',
+  '[data-collapsible-row-header]',
+  '[data-collapsible-row-content]',
+].join(',');
+
+function collectExtentElements(root: HTMLElement): HTMLElement[] {
+  const seen = new Set<HTMLElement>();
+  const elements: HTMLElement[] = [];
+
+  const add = (element: HTMLElement) => {
+    if (seen.has(element)) return;
+    seen.add(element);
+    elements.push(element);
+  };
+
+  root.querySelectorAll<HTMLElement>(CONTENT_EXTENT_SELECTOR).forEach(add);
+
+  const children = root.children;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (child instanceof HTMLElement) add(child);
+  }
+
+  return elements;
+}
+
 function measureAbsoluteContentHeight(root: HTMLElement): number {
   const rootRect = root.getBoundingClientRect();
   let maxBottom = 0;
 
-  const elements = root.querySelectorAll<HTMLElement>('*');
+  const elements = collectExtentElements(root);
 
   elements.forEach((element) => {
     const computedStyle = getComputedStyle(element);
@@ -70,6 +107,8 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
     const innerEl = contentInnerRef.current;
     if (!el || !innerEl) return;
 
+    let rafId: number | null = null;
+
     const measure = () => {
       // Content extent from absolute children only. Including clientHeight/
       // scrollHeight ratchets minHeight to viewport+ε and leaves a permanent
@@ -79,18 +118,29 @@ export const CalendarContent: React.FC<CalendarContentProps> = ({
       setContentHeight(prev => (prev !== h ? h : prev));
     };
 
+    const scheduleMeasure = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        measure();
+      });
+    };
+
     measure();
 
-    // Re-measure when child elements are added/removed or repositioned
-    const mo = new MutationObserver(measure);
-    mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+    // childList only: scroll/zoom repositions items via inline style every
+    // frame. Watching `style` forced a full measure (and layout) on those
+    // updates, which is especially costly in Firefox with classic scrollbars.
+    const mo = new MutationObserver(scheduleMeasure);
+    mo.observe(innerEl, { childList: true, subtree: true });
 
     // Re-measure when the container itself resizes
-    const ro = new ResizeObserver(measure);
+    const ro = new ResizeObserver(scheduleMeasure);
     ro.observe(el);
     ro.observe(innerEl);
 
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       mo.disconnect();
       ro.disconnect();
     };
