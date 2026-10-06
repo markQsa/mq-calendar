@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { TimelinePinpointProps, TimelinePinpointGroupProps } from '../types';
 import { useTimelineContext } from './TimelineContext';
 import { clusterPinpoints, type PinpointItem, type PinpointCluster } from '../../utils/pinpointClustering';
+import { readTimelineCssVar } from '../../utils/cssVars';
 
 /**
  * Individual pinpoint marker component
@@ -39,8 +40,7 @@ export const TimelinePinpoint: React.FC<TimelinePinpointProps> = ({
 
   // Get row height for calculations
   const rowHeightPx = useMemo(() => {
-    return parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    return readTimelineCssVar('--timeline-row-height', '60');
   }, []);
 
   // Calculate vertical position based on alignment
@@ -163,8 +163,7 @@ const ClusterMarker: React.FC<{
   lineWidth?: number;
   onClick?: () => void;
 }> = ({ cluster, absoluteRow, color, size = 24, lineWidth = 2, onClick }) => {
-  const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
-    .getPropertyValue('--timeline-row-height') || '60');
+  const rowHeightPx = readTimelineCssVar('--timeline-row-height', '60');
 
   // Use absolute row directly (no adjustment needed)
   const top = absoluteRow * rowHeightPx;
