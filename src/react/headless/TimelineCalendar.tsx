@@ -50,7 +50,6 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   sidebar
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
-  const sidebarBodyRef = useRef<HTMLDivElement>(null);
   const { width: rootWidth } = useResize(rootRef);
 
   // Subtract sidebar width so zoom is calculated for the calendar area only
@@ -257,6 +256,16 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
   });
 
 
+  // Read inherited --timeline-row-height once (not per child / per callback).
+  const inheritedRowHeightPx = useMemo(() => {
+    if (typeof document === 'undefined') return 60;
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue('--timeline-row-height')
+      .trim();
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
+  }, []);
+
   // Build CSS variables from theme
   const cssVars = useMemo((): CSSProperties => {
     const vars: Record<string, string> = {
@@ -271,7 +280,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
       '--timeline-content-font': resolvedTheme.fonts?.content || 'system-ui, sans-serif',
       '--timeline-header-height': `${resolvedTheme.spacing?.headerHeight || 80}px`,
       '--timeline-header-row-height': `${resolvedTheme.spacing?.headerRowHeight || 40}px`,
-      '--timeline-row-height': `${resolvedTheme.spacing?.rowHeight || 60}px`,
+      '--timeline-row-height': `${resolvedTheme.spacing?.rowHeight || inheritedRowHeightPx}px`,
       '--timeline-row-header-height': `${resolvedTheme.spacing?.rowHeaderHeight || 40}px`
     };
 
@@ -293,7 +302,7 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     }
 
     return vars as CSSProperties;
-  }, [resolvedTheme]);
+  }, [resolvedTheme, inheritedRowHeightPx]);
 
   // Handle header cell click to zoom to that period
   const handleHeaderCellClick = async (cell: HeaderCell) => {
@@ -352,38 +361,6 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     });
   };
 
-  // Scroll sync: sync sidebar body scrollTop with the content area
-  const handleContentScroll = useCallback((e: Event) => {
-    const target = e.target as HTMLElement;
-    if (sidebarBodyRef.current) {
-      sidebarBodyRef.current.scrollTop = target.scrollTop;
-    }
-  }, []);
-
-  const sidebarRef = useRef(sidebar);
-  sidebarRef.current = sidebar;
-
-  // Track whether the scroll listener has been attached
-  const scrollListenerAttached = useRef(false);
-
-  useEffect(() => {
-    if (!sidebarRef.current) return;
-    if (scrollListenerAttached.current) return;
-
-    // Find the [data-timeline-content] element inside the root
-    const root = rootRef.current;
-    if (!root) return;
-    const contentEl = root.querySelector('[data-timeline-content]');
-    if (!contentEl) return;
-
-    scrollListenerAttached.current = true;
-    contentEl.addEventListener('scroll', handleContentScroll);
-    return () => {
-      scrollListenerAttached.current = false;
-      contentEl.removeEventListener('scroll', handleContentScroll);
-    };
-  });
-
   // Context value
   const contextValue = useMemo(
     () => ({
@@ -409,11 +386,26 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
     />
   );
 
+  // When a sidebar is present, CalendarContent must not be its own vertical
+  // scroller: overflow-y:visible + overflow-x:hidden computes to auto (CSS
+  // spec), so both axes are set visible and the parent clips/scrolls instead.
+  const contentStyles = sidebar
+    ? {
+        ...styles,
+        content: {
+          ...styles.content,
+          overflowX: 'visible' as const,
+          overflowY: 'visible' as const,
+          flex: '0 0 auto',
+        },
+      }
+    : styles;
+
   const calendarContent = (
     <CalendarContent
       gridLines={gridLines}
       classNames={classNames}
-      styles={styles}
+      styles={contentStyles}
       renderGridLine={renderGridLine}
     >
       {availability && <AvailabilityOverlay config={availability} />}
@@ -471,23 +463,36 @@ export const TimelineCalendar: React.FC<TimelineCalendarProps> = ({
                 {calendarHeader}
               </div>
             </div>
-            {/* Content row: sidebar body + calendar content */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-              <div
-                ref={sidebarBodyRef}
-                style={{
-                  width: sidebar.width,
-                  flexShrink: 0,
-                  overflowY: 'hidden',
-                  borderRight: '1px solid var(--timeline-header-border)',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {sidebar.content}
-              </div>
-              <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-                {calendarContent}
-                {currentTimeLine}
+            {/* One vertical scroller for sidebar + rows so Firefox APZ
+                composites them together. Horizontal pan stays on the engine. */}
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowX: 'hidden',
+                overflowY: 'auto',
+              }}
+            >
+              <div style={{ display: 'flex', minHeight: '100%' }}>
+                <div
+                  data-timeline-sidebar
+                  style={{
+                    width: sidebar.width,
+                    flexShrink: 0,
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 2,
+                    background: 'var(--timeline-bg)',
+                    borderRight: '1px solid var(--timeline-header-border)',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {sidebar.content}
+                </div>
+                <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                  {calendarContent}
+                  {currentTimeLine}
+                </div>
               </div>
             </div>
           </>
