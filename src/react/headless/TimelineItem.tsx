@@ -3,6 +3,7 @@ import type { TimelineItemProps } from '../types';
 import { useTimelineContext } from './TimelineContext';
 import { useTimelineRowContext, useTimelineRowGroup } from './TimelineRow';
 import { useCollapsibleRowGroup } from './CollapsibleRow';
+import { readTimelineCssVar } from '../../utils/cssVars';
 
 /**
  * Snap timestamp to nearest interval (default: 15 minutes)
@@ -69,10 +70,8 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   // Helper to convert absolute row to relative row within container
   const absoluteToRelativeRow = (absoluteRow: number): number => {
     if (!rowContext) return absoluteRow;
-    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
+    const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
     const headerRows = (rowContext.collapsible) ? headerHeight / defaultHeight : 0;
     const containerStartRow = rowContext.startRow + headerRows;
     return absoluteRow - containerStartRow;
@@ -137,10 +136,8 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
       return draggedTopPixels;
     }
 
-    const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
-    const defaultHeightPx = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    const rowHeightPx = rowContext?.rowHeight || readTimelineCssVar('--timeline-row-height', '60');
+    const defaultHeightPx = readTimelineCssVar('--timeline-row-height', '60');
 
     // Use dragged row while dragging vertically, otherwise use the prop
     const effectiveRow = isDragging && draggedRow !== null ? draggedRow : row;
@@ -150,8 +147,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
     // then add the item's position within the row using the row's actual height
     let baseTop = effectiveRow * rowHeightPx;
     if (rowContext) {
-      const headerHeight = parseInt(getComputedStyle(document.documentElement)
-        .getPropertyValue('--timeline-row-header-height') || '40');
+      const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
       const containerStartPixels = rowContext.startRow * defaultHeightPx;
       const headerPixels = rowContext.collapsible ? headerHeight : 0;
       baseTop = containerStartPixels + headerPixels + effectiveRow * rowHeightPx;
@@ -172,8 +168,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
   }, [row, subRow, subRowCount, isDragging, draggedRow, draggedTopPixels, rowContext, rowContext?.subRowAssignmentsVersion, rowContext?.rowHeight]);
 
   const height = useMemo(() => {
-    const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    const rowHeightPx = rowContext?.rowHeight || readTimelineCssVar('--timeline-row-height', '60');
 
     // Get real-time subRow assignment (for dynamic overlap during drag)
     const currentAssignment = rowContext?.getSubRowAssignment?.(idRef.current);
@@ -218,10 +213,8 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
     let rowOffset = row;
     if (rowContext) {
       // Account for header rows if present
-      const rowHeightPx = parseInt(getComputedStyle(document.documentElement)
-        .getPropertyValue('--timeline-row-height') || '60');
-      const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
+      const rowHeightPx = readTimelineCssVar('--timeline-row-height', '60');
+      const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
       const headerRows = (rowContext.collapsible) ? headerHeight / rowHeightPx : 0;
       const containerStartRow = rowContext.startRow + headerRows;
       rowOffset = row - containerStartRow;
@@ -260,12 +253,10 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
 
           // Calculate content-relative Y for the item's current position
           const groupContext = timelineRowGroupContext || collapsibleRowGroupContext;
-          const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-            .getPropertyValue('--timeline-row-height') || '60');
+          const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
           if (groupContext?.getCalculatedPosition && rowContext) {
             const groupStartRowUnits = groupContext.getCalculatedPosition(rowContext.id);
-            const headerHeight = parseInt(getComputedStyle(document.documentElement)
-              .getPropertyValue('--timeline-row-header-height') || '40');
+            const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
             const headerPx = rowContext.collapsible ? headerHeight : 0;
             contentRelativeStartY.current = groupStartRowUnits * defaultHeight + headerPx + row * (rowContext.rowHeight || defaultHeight);
           }
@@ -313,8 +304,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
       } else if (dragMode.current === 'free') {
         // Cross-row drag — vertical only, time stays fixed
         const groupContext = timelineRowGroupContext || collapsibleRowGroupContext;
-        const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-          .getPropertyValue('--timeline-row-height') || '60');
+        const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
 
         if (groupContext?.getRowAtPixelY) {
           const contentCurrentY = contentRelativeStartY.current + deltaY;
@@ -329,7 +319,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
               const targetRowState = groupContext.getRowState?.(targetRowGroupId);
               const targetIsCollapsible = targetRowState && 'collapsible' in targetRowState && targetRowState.collapsible;
               const targetHeaderPx = targetIsCollapsible
-                ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--timeline-row-header-height') || '40')
+                ? readTimelineCssVar('--timeline-row-header-height', '40')
                 : 0;
               const targetRowHeight = targetRowState?.rowHeight || defaultHeight;
               const targetTopPixels = targetStartRowUnits * defaultHeight + targetHeaderPx + rowInfo.relativeRow * targetRowHeight;
@@ -349,8 +339,7 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
         }
       } else if (dragMode.current === 'vertical') {
         // Vertical drag - change row only with midpoint threshold
-        const rowHeightPx = rowContext?.rowHeight || parseInt(getComputedStyle(document.documentElement)
-          .getPropertyValue('--timeline-row-height') || '60');
+        const rowHeightPx = rowContext?.rowHeight || readTimelineCssVar('--timeline-row-height', '60');
 
         // Try to use group context for accurate variable-height lookup
         const groupContext = timelineRowGroupContext || collapsibleRowGroupContext;
@@ -378,10 +367,8 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
             // Constrain within current TimelineRow
             newRowOffset = Math.max(0, Math.min(newRowOffset, rowContext.rowCount - 1));
 
-            const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
-            const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-              .getPropertyValue('--timeline-row-height') || '60');
+            const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
+            const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
             const headerRows = (rowContext.collapsible) ? headerHeight / defaultHeight : 0;
             const containerStartRow = rowContext.startRow + headerRows;
             const newRow = containerStartRow + newRowOffset;
@@ -412,10 +399,8 @@ const TimelineItemComponent: React.FC<TimelineItemProps> = ({
             const maxRowOffset = rowContext.rowCount - 1;
             newRowOffset = Math.max(0, Math.min(newRowOffset, maxRowOffset));
 
-            const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
-            const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-              .getPropertyValue('--timeline-row-height') || '60');
+            const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
+            const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
             const headerRows = (rowContext.collapsible) ? headerHeight / defaultHeight : 0;
             const containerStartRow = rowContext.startRow + headerRows;
             const newRow = containerStartRow + newRowOffset;

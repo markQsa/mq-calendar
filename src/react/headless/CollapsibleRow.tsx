@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { CollapsibleRowProps } from '../types';
+import { readTimelineCssVar } from '../../utils/cssVars';
 
 interface CollapsibleRowState {
   id: string;
@@ -83,10 +84,8 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
 
   // Calculate position dynamically based on previous rows' heights
   const getCalculatedPosition = useCallback((id: string): number => {
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
-    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
+    const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
 
     let cumulativeHeight = 0; // Track in pixels
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
@@ -112,8 +111,7 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
 
   // Get total height of all collapsible rows
   const getTotalHeight = useCallback((): number => {
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
     let totalHeight = 0; // Track in pixels
 
     const rowArray = Array.from(rows.values());
@@ -135,8 +133,7 @@ export const CollapsibleRowGroup: React.FC<CollapsibleRowGroupProps> = ({ childr
     isInHeader: boolean;
     offsetInRow: number;
   } | null => {
-    const headerHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-header-height') || '40');
+    const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
     let currentY = 0;
     const rowArray = Array.from(rows.values()).sort((a, b) => a.order - b.order);
 
@@ -244,8 +241,7 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
   // Compute effective height
   const effectiveHeight = useMemo(() => {
     if (height !== undefined) return height;
-    return parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    return readTimelineCssVar('--timeline-row-height', '60');
   }, [height]);
 
   // Register this row on mount
@@ -257,8 +253,7 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
   const rowState = getRowState(id);
   const isExpanded = rowState?.isExpanded ?? defaultExpanded;
 
-  const headerHeight = parseInt(getComputedStyle(document.documentElement)
-    .getPropertyValue('--timeline-row-header-height') || '40');
+  const headerHeight = readTimelineCssVar('--timeline-row-header-height', '40');
 
   // Get dynamically calculated position - recalculate when version or rowsSize changes
   const startRow = useMemo(() => {
@@ -267,8 +262,7 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
 
   // Convert position from "row units" to actual pixels using default height
   const top = useMemo(() => {
-    const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--timeline-row-height') || '60');
+    const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
     return startRow * defaultHeight;
   }, [startRow]);
 
@@ -367,8 +361,7 @@ export const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
               // - Start at startRow
               // - Add header height (in row units using default height for compatibility)
               // - Add child's relative row
-              const defaultHeight = parseInt(getComputedStyle(document.documentElement)
-                .getPropertyValue('--timeline-row-height') || '60');
+              const defaultHeight = readTimelineCssVar('--timeline-row-height', '60');
               const headerRows = headerHeight / defaultHeight;
               const absoluteRow = startRow + headerRows + child.props.row;
 
